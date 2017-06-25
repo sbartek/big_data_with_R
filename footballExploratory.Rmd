@@ -1,0 +1,112 @@
+---
+title: "Football Exploratory Analysis"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+```{r}
+source("readDataToMemory.R")
+readFootball()
+
+library(ggplot2)
+library(ggthemes)
+
+##print(dbListTables(con))
+```
+
+```
+select ~ SELECT
+filter ~ WHERE
+arrange ~ ORDER
+summarise ~ aggregators: sum, min, sd, etc.
+mutate ~ operators: +, *, log, etc.
+```
+## Pipes
+
+```{r}
+players %>%
+  head
+```
+
+```{r}
+players %>%
+  colnames
+```
+```{r}
+players %>%
+  sapply(class)
+```
+
+
+
+## SELECT ~ select
+
+```{r}
+players %>%
+  head %>%
+  select(player_name, birthday)
+```
+
+## WHERE ~ filter
+
+```{r}
+players %>%
+  filter(birthday >= "1998") %>%
+  head
+```
+
+## ORDER ~ arrange
+
+```{r}
+players %>%
+  arrange(birthday) %>%
+  head
+```
+
+## aggregators ~ summarise
+
+```{r}
+players %>%
+  summarise(weight=mean(weight), height=mean(height))
+```
+
+## mutate
+
+```{r}
+players %>%
+  mutate(weight_kg = weight*0.45359237) %>%
+  summarise(weight=mean(weight_kg), height=mean(height))
+```
+
+## GROUP BY
+
+```{r}
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(weight=mean(height)) %>%
+  ggplot(aes(year, weight)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```
+```{r}
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(nsample=n()) %>%
+  ggplot(aes(year, nsample)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```
+
+```{r}
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(weight=mean(height), nsamples=n()) %>%
+  filter(nsamples >= 200) %>%
+  ggplot(aes(year, weight)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```

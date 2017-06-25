@@ -6,7 +6,7 @@ output: html_notebook
 
 ```{r}
 source("readDataToMemory.R")
-read_instacart()
+readInstacart()
 
 library(DBI)
 library(ggplot2)
