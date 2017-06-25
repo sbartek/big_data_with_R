@@ -1,0 +1,12 @@
+**/.Rhistory
+
+data/*
+football_data/*
+instacart_data/*
+
+**/*.log
+**/*.log.*
+**/*.nb.html
+
+
+**/*~
