@@ -8,8 +8,8 @@ instacart_data/*
 **/*.log.*
 **/*.nb.html
 
-
 **/*~
 \#*
+.\#*
 
 .DS_Store
