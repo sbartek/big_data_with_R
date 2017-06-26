@@ -11,3 +11,5 @@ instacart_data/*
 
 **/*~
 \#*
+
+.DS_Store
