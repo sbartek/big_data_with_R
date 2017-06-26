@@ -9,14 +9,52 @@ output: ioslides_presentation
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## Plan of the course
+# Plan of the course
 
-* Lecture
-* Project: Part I
-* Project: Part II
-* Project: Extra
+## Project: Part 1
 
-## Buzzwords
+* Exploratory Analysis of Instacart Dataset:
+    - summary with recomended actions that optimally lead to Part 2
+    - Rmd notebook
+    - few queries of Hadoop using SQL (mimic Hive/Impala), 
+    - some queries shoud contians join, other window function
+    - Rmd has to have few nice polots
+    - project is on github
+    
+## Project: Part 2
+
+* Predicting model
+    - summary with test proposal
+    - predicting model
+    - that uses sparklyr for feature engeenering
+    - and has train/test spliting
+    - and uses MLlib
+
+## Project: Extra
+
+* predicting repeating shoping 
+* submit prediction to kaggle
+* use H20
+
+## Today
+
+* introductory lecture (about 60 min)
+* setting up github repo and rstudio and clarify project delivery method (about 30 min)
+* introduction to queries and exercises (about 60 min)
+* templating with whisker (about 30 min)
+* work on Part I objectives
+
+## Next days
+
+* window functions
+* dplyr
+* sparklyr
+* intro to recommender systems (factorization)
+* MLlib
+
+# Buzzwords
+
+## 
 
 - Big Data
 - Data Driven Decision Making
@@ -26,29 +64,35 @@ knitr::opts_chunk$set(echo = FALSE)
 - Spark
 - Deep Learning (this one we do not cover here)
 
-## Data Driven Decision Making 
+# Big Data?
 
-### Scenario A
+## 
+
+<center>
+<img src="bg_c.jpg" height="500px" />
+</center>
+
+##
+
+<center>
+<img src="saybg.jpg" height="500px" />
+</center>
+
+# Data Driven Decision Making 
+
+## Scenario A
 
 <center>
 <img src="highestPaid.jpg" height="400px" />
 </center>
 
-## Data Driven Decision Making 
-
-### Scenario B
-
-* Decision Driven Data Making 
+## Scenario B
 
 <center>
-<img src="1ouapm.jpg" height="300px" />
+<img src="dddm.jpg" height="500px" />
 </center>
 
-
-
-## Data Driven Decision Making 
-
-### Scenario C
+## Scenario C
 
 <center>
 <img src="shavedSales.jpg" height="400px" />
@@ -56,8 +100,11 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ## So what does Data-Driven mean?
 
-* How can measure impact of our decision? 
-* Is our argument based on data?
+* How can measure impact of our decision?
+
+## So what does Data-Driven mean?
+
+### Is our argument based on data?
 * Big Data: 
     - Have we done something similar in the past? 
     - How we are doing now? Thanks, fine.
@@ -66,7 +113,17 @@ knitr::opts_chunk$set(echo = FALSE)
     - Have you actually used our app?
 * No Data: 
     - Can we learn something from it?
+    
+## So what does Data-Driven mean?    
+    
 * Correlation does not imply causation: A/B Test it, you idiot!
+
+
+<center>
+<br>
+<img src="ab-testing-tardar-sauce.jpg" height="400px" />
+</center>
+
 
 ## We need Data Scientist (maybe).
 
@@ -150,17 +207,17 @@ __in order to get a good job__
 
 ## What R Data Scientist should know 
 
-__in order to get a good job__
-
-* python
 * effective table manipulation: data.table, dplyr
 * viz: ggplot2
-* reporting: rmd notebooks, ppt :p
+* reporting: ppt, rmd notebooks
+* dashboards: shiny
 * SQL (Hive)
+* Good editor: RStudio, Emacs
+* git, unix shell
 * A/B testing
 * Some stats would be helpfull sometimes
 * Reading something about your business does not harm 
-* git, unix shell
+* selling skills
 
 ## 
 
@@ -191,13 +248,6 @@ _The high velocity and veracity of the Big Data is the reason why the traditiona
 <center>
 <img src="cathadoopbigdata.png" height="500px" />
 </center>
-
-## Big Data
-
-<center>
-<img src="saybg.jpg" height="500px" />
-</center>
-
 
 ## Hadoop (from Wikipedia)
 
@@ -263,23 +313,20 @@ Not directly.
 * Tensorflow 
 * SparkNet
 
-## Project: Part 1
+# Exercise 1: Git & Kaggle
 
-* Exploratory Analysis of Instacart Dataset
-    - Query Hadoop using SQL (mimic Hive/Impala)
-    - using window functions
-    - manage projects on github
-    - create Rmd file
-    
-## Project: Part 2
+##
 
-* Predicting model
-    - using sparklyr
-    - train/test spliting
-    - using MLlib
+1. create github account if you do not have one
+2. fork https://github.com/sbartek/big_data_with_R
+3. clone your fork
+4. create directory `<your_name_surname>` and copy there content of directory `bartek`
+5. register to kaggle.com (if you are not)
+6. download data from  https://www.kaggle.com/hugomathien/soccer into directory `football_data` (do not unzip)
+7. download data from  https://www.kaggle.com/c/instacart-market-basket-analysis into directory `football_data` (do not unzip)
+8. run extractData.R
+9. push and request merge: make sure your fork does not contain data
 
-## Project: Extra
+# Exercise 2: Hive/Impala
 
-* predicting repeating shoping 
-* submit prediction to kaggle
-* use H20
+# Exercise 3: Whisker
