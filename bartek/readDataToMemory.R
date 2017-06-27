@@ -4,8 +4,12 @@ library(sparklyr)
 library(RSQLite)
 library(dplyr)
 
-
-sc <- spark_connect(master = "local")
+config <- spark_config()
+config$`sparklyr.shell.driver-memory` <- "4G"
+config$`sparklyr.shell.executor-memory` <- "4G"
+config$`spark.yarn.executor.memoryOverhead` <- "1G"
+sc <- spark_connect(master = "local", config = config)
+#sc <- spark_connect(master = "local")
 
 order_products__prior <- NULL
 order_products__train <- NULL

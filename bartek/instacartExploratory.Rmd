@@ -107,7 +107,6 @@ products_popularity
 ```
 
 ```{r}
-
 products_popularity %>%
   ggplot(
     aes(reorder(product_name, n_orders, function(x) x), 
