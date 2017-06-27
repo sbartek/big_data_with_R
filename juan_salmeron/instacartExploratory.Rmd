@@ -180,7 +180,7 @@ SELECT product_id, COUNT(reordered) AS reordered_times
 FROM order_products__prior_tbl
 GROUP BY product_id
 ORDER BY reordered_times DESC
-LIMIT 5
+LIMIT 10
 "
 
 most_reordered <-
@@ -190,7 +190,47 @@ most_reordered
 ```
 
 * The less reorderd product?
+```{r}
+less_reordered_txt <- "
+SELECT product_id, COUNT(reordered) AS reordered_times
+FROM order_products__prior_tbl
+GROUP BY product_id
+ORDER BY reordered_times ASC
+LIMIT 10
+"
+
+less_reordered <-
+  dbGetQuery(sc, less_reordered_txt)
+
+less_reordered
+```
+
 * Plot histogram of number of products in an order.
+```{r}
+products_txt <-"
+SELECT product_id
+FROM order_products__prior_tbl
+GROUP BY product_id
+"
+
+ordered_products_txt <-"
+SELECT product_id, count(1) AS quantity
+FROM order_products__prior_tbl
+GROUP BY product_id
+ORDER BY quantity DESC
+"
+
+ordered_products <-
+  dbGetQuery(sc, ordered_products_txt)
+
+products <-
+  dbGetQuery(sc, products_txt)
+
+products
+ordered_products
+hist(ordered_products[,c('product_id')])
+```
+
 * What is the most popular department? 
 
 ## Whisker, magrittr
