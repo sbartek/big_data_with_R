@@ -1,4 +1,4 @@
-source('bartek/configuration.R')
+source('configuration.R')
 
 zip_files <- list.files(path = INSTACART_DATA_DIR, pattern = "*.zip")
 for (ifile in zip_files) {
