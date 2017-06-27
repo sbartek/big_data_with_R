@@ -1,0 +1,55 @@
+---
+title: "Recommender"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(sparklyr)
+library(dplyr)
+```
+
+```{r}
+sc <- spark_connect(master = "local")
+
+user = c(0, 0, 1, 1, 2, 2)
+item = c(0, 1, 1, 2, 1, 2)
+rating = c(4.0, 2.0, 3.0, 4.0, 1.0, 5.0)
+
+df <- data.frame(user = user, item = item, rating = rating)
+
+movie_ratings <- sdf_copy_to(sc, df, "movie_rating", overwrite = TRUE)
+movie_ratings
+
+```
+
+
+```{r}
+explicit_model <- ml_als_factorization(movie_ratings, iter.max = 5, regularization.parameter = 0.01)
+explicit_model$item.factors
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
