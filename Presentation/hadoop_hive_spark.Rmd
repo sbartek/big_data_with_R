@@ -323,7 +323,7 @@ Not directly.
 4. create directory `<your_name_surname>` and copy there content of directory `bartek`
 5. register to kaggle.com (if you are not)
 6. download data from  https://www.kaggle.com/hugomathien/soccer into directory `football_data` (do not unzip)
-7. download data from  https://www.kaggle.com/c/instacart-market-basket-analysis into directory `football_data` (do not unzip)
+7. download data from  https://www.kaggle.com/c/instacart-market-basket-analysis into directory `instacart_data` (do not unzip)
 8. run extractData.R
 9. push and request merge: make sure your fork does not contain data
 
