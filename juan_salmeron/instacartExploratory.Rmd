@@ -144,10 +144,11 @@ products_popularity
 * Which day of week people order most fequently?
 ```{r}
 most_frequent_dow_txt <- "
-SELECT count(1) AS c, order_dow
+SELECT count(1) AS n_orders, order_dow
 FROM orders_tbl
 GROUP BY order_dow
-ORDER BY c DESC
+ORDER BY n_orders DESC
+LIMIT 5
 "
 
 most_frequent_dow <-
@@ -159,10 +160,11 @@ most_frequent_dow
 * The most popular hour of doing order? 
 ```{r}
 most_popular_hour_txt <- "
-SELECT count(1) AS c, order_hour_of_day
+SELECT count(1) AS n_orders, order_hour_of_day
 FROM orders_tbl
 GROUP BY order_hour_of_day
-ORDER BY c DESC
+ORDER BY n_orders DESC
+LIMIT 5
 "
 
 most_popular_hour <-
@@ -170,7 +172,23 @@ most_popular_hour <-
 
 most_popular_hour
 ```
+
 * The most reordered products?
+```{r}
+most_reordered_txt <- "
+SELECT product_id, COUNT(reordered) AS reordered_times
+FROM order_products__prior_tbl
+GROUP BY product_id
+ORDER BY reordered_times DESC
+LIMIT 5
+"
+
+most_reordered <-
+  dbGetQuery(sc, most_reordered_txt)
+
+most_reordered
+```
+
 * The less reorderd product?
 * Plot histogram of number of products in an order.
 * What is the most popular department? 
