@@ -1,5 +1,7 @@
 **/.Rhistory
 **/.RData
+**/.Rproj.user/*
+**/.Rprofile
 
 data/*
 football_data/*
