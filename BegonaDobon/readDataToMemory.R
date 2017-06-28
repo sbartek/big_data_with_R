@@ -4,6 +4,8 @@ library(sparklyr)
 library(RSQLite)
 library(dplyr)
 
+#spark_install(version = "2.1.0")
+
 config <- spark_config()
 config$`sparklyr.shell.driver-memory` <- "4G"
 config$`sparklyr.shell.executor-memory` <- "4G"
