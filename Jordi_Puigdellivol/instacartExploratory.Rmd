@@ -7,6 +7,8 @@ output:
 
 
 ```{r}
+options(java.parameters = "-Xmx12g")
+
 source("readDataToMemory.R")
 readInstacart()
 
@@ -15,6 +17,7 @@ library(ggplot2)
 library(ggthemes)
 
 src_tbls(sc)
+
 ```
 
 ### Order products
@@ -144,9 +147,38 @@ products_popularity
 * Which day of week people order most fequently?
 * The most popular hour of doing order? 
 * The most reordered products?
-* The less reorderd product?
+* The less reordered product?
 * Plot histogram of number of products in an order.
 * What is the most popular department? 
+
+```{r}
+Ex1 <- dbGetQuery(sc,"SELECT order_dow, count(1) number_of_orders
+                  FROM orders_tbl 
+                  GROUP BY order_dow 
+                  ORDER BY count(1) desc limit 1") #d0
+
+Ex2 <- dbGetQuery(sc,"SELECT order_hour_of_day, count(1) number_of_orders 
+                  FROM orders_tbl 
+                  GROUP BY order_hour_of_day 
+                  ORDER BY count(1) desc limit 1") #10h
+
+Ex3 <- dbGetQuery(sc,"SELECT product_id, count(1) number_of_reorders 
+                  FROM order_products__prior_tbl 
+                  WHERE reordered=1 
+                  GROUP BY product_id 
+                  ORDER BY count(1) desc")
+Ex4 <- Ex3 %>% tail(1)
+Ex3 <- Ex3 %>% head(1)
+
+EX5 <- dbGetQuery(sc,"SELECT order_id, count(1) number_of_products FROM order_products__prior_tbl GROUP BY order_id")
+
+EX5 %>% ggplot()+geom_histogram(aes(number_of_products),binwidth = 1)
+
+
+
+
+
+```
 
 ## Whisker, magrittr
 
