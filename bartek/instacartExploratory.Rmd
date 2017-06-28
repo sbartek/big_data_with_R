@@ -24,7 +24,10 @@ src_tbls(sc)
 These files specify which products were purchased in each order.
 
 ```{r}
-dbGetQuery(sc, "SELECT * FROM order_products__prior_tbl LIMIT 10")
+dbGetQuery(sc, 
+"SELECT * 
+FROM order_products__prior_tbl 
+LIMIT 10")
 ```
  
 ## orders
@@ -35,7 +38,10 @@ This file tells to which set (prior, train, test) an order belongs.
 
 
 ```{r}
-orders_prev <- dbGetQuery(sc, "SELECT * FROM orders_tbl LIMIT 100")
+orders_prev <- dbGetQuery(sc, 
+"SELECT * 
+FROM orders_tbl 
+LIMIT 100")
 orders_prev
 ```
  
@@ -101,7 +107,6 @@ products_popularity
 ```
 
 ```{r}
-
 products_popularity %>%
   ggplot(
     aes(reorder(product_name, n_orders, function(x) x), 
@@ -142,11 +147,39 @@ products_popularity
 ## Questions
 
 * Which day of week people order most fequently?
+
+```{r}
+dbGetQuery(sc, 
+"
+SELECT order_dow
+,   COUNT(1) AS n_orders
+FROM orders_tbl
+GROUP BY order_dow
+ORDER BY n_orders DESC
+")
+```
+
 * The most popular hour of doing order? 
 * The most reordered products?
 * The less reorderd product?
 * Plot histogram of number of products in an order.
+
+```{r}
+dbGetQuery(sc, 
+"SELECT order_id
+,   COUNT(1) AS n_products
+FROM order_products__prior_tbl
+GROUP BY order_id
+LIMIT 100
+")
+```
+
 * What is the most popular department? 
+
+```{r}
+dbGetQuery(sc, "DESC orders_tbl")
+```
+
 
 ## Whisker, magrittr
 
@@ -226,4 +259,23 @@ FROM orders_tbl
 WHERE user_id <= 10 
 ")
 ```
+* Product that is usually orders in numerous baskets
 
+```{r}
+"
+SELECT product_id
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+* Could modify the query and add prduct name?
