@@ -337,6 +337,8 @@ dept_popularity <-
 dept_popularity
 
 ```
+* Which product is usually bought last? Which department/aisle belongs to?
+
 
 
 ## Whisker, magrittr
@@ -477,3 +479,4 @@ Could modify the query and add product name?
 Product that is usually ordered in small baskets
 
 For 10 first users and all their orders find days since first order
+
