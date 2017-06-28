@@ -283,7 +283,7 @@ reordered_products_popularity
 
 * Plot histogram of number of products in an order.
 
-```{r}
+```{r, eval=FALSE}
 #### 
 number_products_order_txt <- "
 SELECT order_id
@@ -296,9 +296,6 @@ LIMIT 50
 
 number_products_order <-
   dbGetQuery(sc, number_products_order_txt)
-
-number_products_order
-
 
 ```
 

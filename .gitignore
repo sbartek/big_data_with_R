@@ -1,4 +1,5 @@
 **/.Rhistory
+**/.RData
 
 data/*
 football_data/*
@@ -13,3 +14,4 @@ instacart_data/*
 .\#*
 
 .DS_Store
+.Rproj.user
