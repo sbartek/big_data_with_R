@@ -235,6 +235,7 @@ product_times_ordered_txt %>%
 * For given department, plot the most popular product (with templating department).
 * For given day, rank department popularity.
 
+
 ## More on orders (Window Functions)
 
 
@@ -247,6 +248,9 @@ SELECT days_since_prior_order
 FROM orders_tbl
 GROUP BY days_since_prior_order
 ") 
+
+
+
 ```
 
 
@@ -265,5 +269,80 @@ dbGetQuery(sc,
 FROM orders_tbl
 WHERE user_id <= 10 
 ")
+```
+* Product that is usually orders in numerous baskets
+
+```{r}
+"
+SELECT product_name
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn,
+ products_tbl p
+where pn.product_id = p.product_id
+GROUP BY product_name
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+* Could modify the query and add prduct name?
+
+* Prduct that is usualy orders in small baskets.
+```{r}
+"
+SELECT product_name
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn,
+ products_tbl p
+where pn.product_id = p.product_id
+GROUP BY product_name
+ORDER BY avg_products_number 
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+
+*for 10 first users and all their orders find days since first order.
+```{r}
+
+"
+SELECT user_id, order_number,days_since_prior_order,
+SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS days_since_first_order
+FROM orders_tbl
+where user_id <=10
+ORDER BY user_id" %>%
+dbGetQuery(sc, .)
+
+
+"
+SELECT user_id, order_number,days_since_prior_order,
+SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND CURRENT ROW) AS days_since_first_order
+FROM orders_tbl
+where user_id <=10
+ORDER BY user_id" %>%
+dbGetQuery(sc, .)
+
+
+
+"
+SELECT user_id, order_number,days_since_prior_order,
+avg(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND 1 PRECEDING ) AS days_since_first_order
+FROM orders_tbl
+where user_id <=10
+ORDER BY user_id" %>%
+dbGetQuery(sc, .)
+
 ```
 

@@ -135,6 +135,15 @@ players %>%
   ggplot(aes(year, nsample)) +
   geom_line(colour="darkorange") +
   theme_minimal()
+
+"select CAST(SUBSTR(birthday,1,4) AS INT) AS year, COUNT(1) nsample2
+FROM Player
+GROUP BY SUBSTR(birthday,1,4)" %>% dbGetQuery(sql_con,.) %>% 
+  ggplot(aes(year, nsample2)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+
+
 ```
 
 ```{r}
@@ -213,6 +222,7 @@ player_attribute %>% head()
 player_attribute %>% arrange(-heading_accuracy) %>% select(country)
 dbListTables(sql_con)
 players
+
 
 ```
 
