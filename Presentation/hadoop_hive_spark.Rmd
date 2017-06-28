@@ -1,0 +1,332 @@
+---
+title: "Big Data Management"
+subtitle: "with R"
+author: "Bartek Skorulski"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Plan of the course
+
+## Project: Part 1
+
+* Exploratory Analysis of Instacart Dataset:
+    - summary with recomended actions that optimally lead to Part 2
+    - Rmd notebook
+    - few queries of Hadoop using SQL (mimic Hive/Impala), 
+    - some queries shoud contians join, other window function
+    - Rmd has to have few nice polots
+    - project is on github
+    
+## Project: Part 2
+
+* Predicting model
+    - summary with test proposal
+    - predicting model
+    - that uses sparklyr for feature engeenering
+    - and has train/test spliting
+    - and uses MLlib
+
+## Project: Extra
+
+* predicting repeating shoping 
+* submit prediction to kaggle
+* use H20
+
+## Today
+
+* introductory lecture (about 60 min)
+* setting up github repo and rstudio and clarify project delivery method (about 30 min)
+* introduction to queries and exercises (about 60 min)
+* templating with whisker (about 30 min)
+* work on Part I objectives
+
+## Next days
+
+* window functions
+* dplyr
+* sparklyr
+* intro to recommender systems (factorization)
+* MLlib
+
+# Buzzwords
+
+## 
+
+- Big Data
+- Data Driven Decision Making
+- Data Science
+- Hadoop
+- Hive/Impala
+- Spark
+- Deep Learning (this one we do not cover here)
+
+# Big Data?
+
+## 
+
+<center>
+<img src="bg_c.jpg" height="500px" />
+</center>
+
+##
+
+<center>
+<img src="saybg.jpg" height="500px" />
+</center>
+
+# Data Driven Decision Making 
+
+## Scenario A
+
+<center>
+<img src="highestPaid.jpg" height="400px" />
+</center>
+
+## Scenario B
+
+<center>
+<img src="dddm.jpg" height="500px" />
+</center>
+
+## Scenario C
+
+<center>
+<img src="shavedSales.jpg" height="400px" />
+</center>
+
+## So what does Data-Driven mean?
+
+* How can measure impact of our decision?
+
+## So what does Data-Driven mean?
+
+### Is our argument based on data?
+* Big Data: 
+    - Have we done something similar in the past? 
+    - How we are doing now? Thanks, fine.
+* Small Data: Not always the bigger the better. 
+    - Ask your customers. 
+    - Have you actually used our app?
+* No Data: 
+    - Can we learn something from it?
+    
+## So what does Data-Driven mean?    
+    
+* Correlation does not imply causation: A/B Test it, you idiot!
+
+
+<center>
+<br>
+<img src="ab-testing-tardar-sauce.jpg" height="400px" />
+</center>
+
+
+## We need Data Scientist (maybe).
+
+
+<center>
+<br>
+<img src="dataSize.jpg" height="400px" />
+</center>
+
+
+## Versions of Data Scientist
+
+* Data Engineer:
+    - set up infrastructure
+    - transforming unstructured data into structured
+    - some basic analysis
+    - monitoring main metrics 
+
+    
+## Versions of Data Scientist
+
+* Data Analyst: 
+    - quering DB
+    - pivoting Excel Tables
+    - making excel plots
+    - making Tableau dashboards
+    - A/B Tests 
+
+<center>
+<img src="californiada.jpg" height="200px" />
+</center>
+
+
+## Data Scientist
+
+* Machine Learning:
+    - statistical modeling
+    - creating products like Recommender System, Forecasting Consumption 
+
+<center>
+<img src="lab-meme.jpg" height="200px" />
+</center>
+    
+## Data Scientist
+
+* Data Scientist:
+    - A bit of everything above
+
+<center>
+<img src="ds.png" height="400px" />
+</center>
+
+## Mandatory plot
+
+<center>
+<img src="unicorn.jpg" height="600px" />
+</center>
+
+## Programming knowledge
+
+Basically now there are two groups of Data Scientists:
+
+* R
+* Python
+
+<center>
+<img src="pyr.jpg" height="200px" />
+</center>
+
+## What R Data Scientist should know
+
+## What R Data Scientist should know
+
+__in order to get a good job__
+
+## What R Data Scientist should know
+
+__in order to get a good job__
+
+* python
+
+## What R Data Scientist should know 
+
+* effective table manipulation: data.table, dplyr
+* viz: ggplot2
+* reporting: ppt, rmd notebooks
+* dashboards: shiny
+* SQL (Hive)
+* Good editor: RStudio, Emacs
+* git, unix shell
+* A/B testing
+* Some stats would be helpfull sometimes
+* Reading something about your business does not harm 
+* selling skills
+
+## 
+
+https://www.linkedin.com/jobs/view/374797540/?recommendedFlavor=IN_NETWORK&refId=3697450881498427193789&trk=d_flagship3_search_srp_jobs&lipi=urn%3Ali%3Apage%3Ad_flagship3_search_srp_jobs%3BsulDMd62T5K0FN2t90bd7g%3D%3D&licu=urn%3Ali%3Acontrol%3Ad_flagship3_search_srp_jobs-A_jobssearch_job_result_click
+
+https://www.linkedin.com/jobs/view/287975909/?refId=3697450881498427193789&trk=d_flagship3_search_srp_jobs&lipi=urn%3Ali%3Apage%3Ad_flagship3_search_srp_jobs%3BsulDMd62T5K0FN2t90bd7g%3D%3D&licu=urn%3Ali%3Acontrol%3Ad_flagship3_search_srp_jobs-A_jobssearch_job_result_click
+
+https://www.linkedin.com/jobs/view/329758122/?refId=3697450881498427193789&trk=d_flagship3_search_srp_jobs&lipi=urn%3Ali%3Apage%3Ad_flagship3_search_srp_jobs%3BsulDMd62T5K0FN2t90bd7g%3D%3D&licu=urn%3Ali%3Acontrol%3Ad_flagship3_search_srp_jobs-A_jobssearch_job_result_click
+
+https://www.linkedin.com/jobs/view/333055984/?recommendedFlavor=IN_NETWORK&refId=3697450881498427193789&trk=d_flagship3_search_srp_jobs&lipi=urn%3Ali%3Apage%3Ad_flagship3_search_srp_jobs%3BsulDMd62T5K0FN2t90bd7g%3D%3D&licu=urn%3Ali%3Acontrol%3Ad_flagship3_search_srp_jobs-A_jobssearch_job_result_click
+
+https://www.linkedin.com/jobs/view/333003907/?recommendedFlavor=IN_NETWORK&refId=3697450881498427193789&trk=d_flagship3_search_srp_jobs&lipi=urn%3Ali%3Apage%3Ad_flagship3_search_srp_jobs%3BsulDMd62T5K0FN2t90bd7g%3D%3D&licu=urn%3Ali%3Acontrol%3Ad_flagship3_search_srp_jobs-A_jobssearch_job_result_click
+
+## Big Data
+
+<center>
+<img src="bg.jpg" height="500px" />
+</center>
+
+## Where we can store big data (from Quora)
+
+White Brian, Marketing Manager - Silver Touch Technologies Ltd.
+
+_The high velocity and veracity of the Big Data is the reason why the traditional warehouse is no longer suited to store Big Data. The structured and unstructured types of data is also reason enough why you need to look for tools that can help in storing the data and mine it properly for best results. Hadoop and Cloudera are tools that enterprises should use in order to store the structured and unstructured data. They create an enterprise hub, where the data is stored, and wherein security is given highest priority. Talend allows you to build your own data management system. I would recommend consulting Silver Touch to ensure you can store Big Data securely in your enterprise, and gather maximum insights from analyzing the data._
+
+##
+
+<center>
+<img src="cathadoopbigdata.png" height="500px" />
+</center>
+
+## Hadoop (from Wikipedia)
+
+Apache Hadoop ( /həˈduːp/) is an open-source software framework used for distributed storage
+and processing of dataset of __big data__ using the __MapReduce__ programming model. 
+
+It consists of computer clusters built from commodity hardware. All the modules in Hadoop are designed with a fundamental assumption that hardware failures are common occurrences and should be automatically handled by the framework.
+
+## Hadoop (from Wikipedia)
+
+The core of Apache Hadoop consists of a storage part, known as __Hadoop Distributed File System (HDFS)__, 
+and a processing part which is a __MapReduce programming model__. 
+
+Hadoop splits files into large blocks and distributes them across nodes in a cluster. 
+It then transfers packaged code into nodes to process the data in parallel. 
+This approach takes advantage of data locality, where nodes manipulate the data they have access to. 
+This allows the dataset to be processed faster and more efficiently than 
+it would be in a more conventional supercomputer architecture that relies on a parallel 
+file system where computation and data are distributed via high-speed networking.
+
+## \
+
+<br>
+
+<center>
+<img src="neo-matrixi-know-kung-fu-i-know-hadoop.jpg" height="300px" />
+</center>
+
+## Hive
+
+SQL interface to Hadoop
+
+
+<center>
+<img src="hive.png" height="150px" />
+</center>
+
+## Impala
+
+<center>
+<img src="inmem.png" height="200px" />
+</center>
+
+## Spark (from Wikipedia)
+
+Apache Spark provides programmers with an application programming interface centered on a data structure called the resilient distributed dataset (RDD), a read-only multiset of data items distributed over a cluster of machines, that is maintained in a fault-tolerant way.
+
+It was developed in response to limitations in the MapReduce cluster computing paradigm, which forces a particular linear dataflow structure on distributed programs: MapReduce programs read input data from disk, map a function across the data, reduce the results of the map, and store reduction results on disk. Spark's RDDs function as a working set for distributed programs that offers a (deliberately) restricted form of distributed shared memory.
+
+## Spark Components
+
+* Spark Core
+* Spark SQL
+* Spark Streaming
+* MLlib Machine Learning Library
+* GraphX
+
+## Can I do Deep Learning with Spark?
+
+Not directly. 
+
+* MXNet
+* Tensorflow 
+* SparkNet
+
+# Exercise 1: Git & Kaggle
+
+##
+
+1. create github account if you do not have one
+2. fork https://github.com/sbartek/big_data_with_R
+3. clone your fork
+4. create directory `<your_name_surname>` and copy there content of directory `bartek`
+5. register to kaggle.com (if you are not)
+6. download data from  https://www.kaggle.com/hugomathien/soccer into directory `football_data` (do not unzip)
+7. download data from  https://www.kaggle.com/c/instacart-market-basket-analysis into directory `football_data` (do not unzip)
+8. run extractData.R
+9. push and request merge: make sure your fork does not contain data
+
+# Exercise 2: Hive/Impala
+
+# Exercise 3: Whisker
