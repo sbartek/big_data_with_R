@@ -7,6 +7,7 @@ output:
 
 
 ```{r}
+spark_memory = "2G"
 source("readDataToMemory.R")
 readInstacart()
 
@@ -142,11 +143,43 @@ products_popularity
 ## Questions
 
 * Which day of week people order most fequently?
+```{r}
+result <- dbGetQuery(sc, "SELECT order_dow, count(1) as num FROM orders_tbl group by order_dow order by order_dow")
+ggplot(result) + geom_bar(aes(x=order_dow, y=num), stat = "identity")
+print(result)
+```
+
 * The most popular hour of doing order? 
+```{r}
+result <- dbGetQuery(sc, "SELECT order_hour_of_day, count(1) as num FROM orders_tbl group by order_hour_of_day order by order_hour_of_day")
+ggplot(result) + geom_bar(aes(x=order_hour_of_day, y=num), stat = "identity")
+print(result)
+```
+
 * The most reordered products?
+```{r}
+# result <- dbGetQuery(sc, "SELECT order_hour_of_day, count(1) as num FROM orders_tbl group by order_hour_of_day order by order_hour_of_day")
+result
+```
+
 * The less reorderd product?
+```{r}
+# result <- dbGetQuery(sc, "SELECT order_hour_of_day, count(1) as num FROM orders_tbl group by order_hour_of_day order by order_hour_of_day")
+result
+```
+
 * Plot histogram of number of products in an order.
+```{r}
+# result <- dbGetQuery(sc, "SELECT order_hour_of_day, count(1) as num FROM orders_tbl group by order_hour_of_day order by order_hour_of_day")
+result
+```
+
 * What is the most popular department? 
+```{r}
+# result <- dbGetQuery(sc, "SELECT order_hour_of_day, count(1) as num FROM orders_tbl group by order_hour_of_day order by order_hour_of_day")
+result
+```
+
 
 ## Whisker, magrittr
 
