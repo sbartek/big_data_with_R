@@ -26,9 +26,16 @@ players %>%
 players %>%
   colnames
 ```
+
+
 ```{r}
 players %>%
   sapply(class)
+
+
+# the . means giving class as a second argument
+class %>%
+  sapply(players, . )  
 ```
 
 
@@ -58,6 +65,16 @@ players %>%
   head
 ```
 
+```{r}
+dbGetQuery(sql_con, "
+SELECT player_name
+,   birthday
+FROM Player
+WHERE birthday >= 1998
+LIMIT 6
+")
+```
+
 ## ORDER ~ arrange
 
 ```{r}
@@ -66,11 +83,29 @@ players %>%
   head
 ```
 
+```{r}
+dbGetQuery(sql_con, "
+SELECT player_name
+,   birthday
+FROM Player
+ORDER by birthday ASC
+LIMIT 6
+")
+```
+
 ## aggregators ~ summarise
 
 ```{r}
 players %>%
   summarise(weight=mean(weight), height=mean(height))
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT AVG(weight) AS mean_weight, 
+      AVG(height) AS mean_height
+FROM Player
+")
 ```
 
 ## mutate
@@ -81,17 +116,52 @@ players %>%
   summarise(weight=mean(weight_kg), height=mean(height))
 ```
 
+```{r}
+dbGetQuery(sql_con, "
+SELECT AVG(weight*0.45359237) AS mean_weight, 
+      AVG(height) AS mean_height
+FROM Player
+")
+```
+
+
 ## GROUP BY
 
 ```{r}
 players %>%
   mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
   group_by(year) %>%
-  summarise(weight=mean(height)) %>%
+  summarise(weight=mean(weight)) %>%
   ggplot(aes(year, weight)) +
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
+
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year, 
+AVG(weight) AS mean_weight
+FROM Player
+GROUP BY year
+") %>%
+  ggplot(aes(year, mean_weight)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+
+## this is in sqlite, in hive we need to repeat in GROUP the whole expression 
+
+# dbGetQuery(sql_con, "
+# SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year, 
+# AVG(weight) AS mean_weight
+# FROM Player
+# GROUP BY CAST(SUBSTR(birthday, 1, 4) AS INT)
+# ") 
+
+```
+
+
+
 ```{r}
 players %>%
   mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
@@ -103,15 +173,50 @@ players %>%
 ```
 
 ```{r}
-players %>%
-  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
-  group_by(year) %>%
-  summarise(weight=mean(height), nsamples=n()) %>%
-  filter(nsamples >= 200) %>%
-  ggplot(aes(year, weight)) +
+dbGetQuery(sql_con, "
+SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year, 
+      COUNT(1) AS nsample
+FROM Player
+GROUP BY year
+") %>%
+  ggplot(aes(year, nsample)) +
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
+
+```{r}
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(height=mean(height), nsamples=n()) %>%
+  filter(nsamples >= 200) %>%
+  ggplot(aes(year, height)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT height,
+      CAST(SUBSTR(birthday, 1, 4) AS INT) AS year, 
+      COUNT(1) AS nsample,
+      AVG(height) AS mean_height
+FROM Player
+WHERE height >= 200
+GROUP BY year
+") %>%
+  ggplot(aes(year, mean_height)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+
+
+```
+
+
+
+
+
+
 
 Exercise
 

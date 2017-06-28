@@ -283,15 +283,12 @@ reordered_products_popularity
 
 * Plot histogram of number of products in an order.
 
-```{r, eval=FALSE}
-#### 
+```{r}
 number_products_order_txt <- "
 SELECT order_id
-,   COUNT(1) AS n_orders
+,   COUNT(1) AS n_products
 FROM order_products__prior_tbl
 GROUP BY order_id
-ORDER BY n_orders DESC
-LIMIT 50
 "
 
 number_products_order <-
@@ -299,9 +296,52 @@ number_products_order <-
 
 ```
 
+
+```{r}
+number_products_order %>%
+  ggplot(aes(n_products)) + geom_histogram()
+
+```
+
 * What is the most popular department? 
 
+```{r, eval=FALSE}
+### finish this
+dept_popularity_txt <- "
+SELECT department_id, 
+  SUM(n_orders) AS orders_dept
+  FROM (
+      SELECT op.product_id
+      ,   n_orders
+      ,   department_id
+      FROM (
+          SELECT product_id
+          ,   COUNT(1) AS n_orders
+          FROM order_products__prior_tbl
+          GROUP BY product_id
+          ORDER BY n_orders DESC
+          ) op
+      LEFT JOIN (
+          SELECT product_id,department_id
+          FROM products_tbl) p
+      ON op.product_id = p.product_id
+  )
+GROUP BY department_id
+ORDER BY orders_dept DESC
+LIMIT 1
+"
+
+dept_popularity <-
+  dbGetQuery(sc, dept_popularity_txt)
+
+dept_popularity
+
+```
+
+
 ## Whisker, magrittr
+
+To create templates.
 
 ```{r}
 library(whisker)
@@ -334,7 +374,12 @@ product_times_ordered_txt %>%
   whisker.render(data) %>%
   cat
 ```
+
+
 ```{r}
+#data <- list(productId = 24852)
+data <- list(productId = 30500)
+
 product_times_ordered_txt %>%
   whisker.render(data) %>%
   dbGetQuery(sc, .) %>%
@@ -345,11 +390,26 @@ product_times_ordered_txt %>%
 
 ## Questions
 
-* For given department, plot the most popular product (with templating department).
+* For given department, list the 10 most popular products (with templating department).
+
+```{r}
+top10_product_ordered_txt <- "
+### 
+
+"
+
+data <- list(deptId = 4)
+
+top10_product_ordered_txt %>%
+  whisker.render(data) %>%
+  dbGetQuery(sc, .)
+
+```
+
+
 * For given day, rank department popularity.
 
 ## More on orders (Window Functions)
-
 
 
 ```{r}
@@ -378,15 +438,11 @@ FROM order_products__prior_tbl
 WHERE product_id = 13176
 ")
 
-sum(x$reordered)
-#398609
-#315913
-21137
 
 ```
 
 
-
+Partition data by user, order each partition by order_number, then OVER that, get the first value of order_number to get the id of the first product put in the basket for each order/user. 
 
 ```{r}
 dbGetQuery(sc, 
@@ -398,3 +454,26 @@ WHERE user_id <= 10
 ")
 ```
 
+Product that is usually ordered in numerous baskets
+
+```{r}
+"SELECT product_id
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+ dbGetQuery(sc, .)
+```
+
+Could modify the query and add product name?
+
+Product that is usually ordered in small baskets
+
+For 10 first users and all their orders find days since first order
