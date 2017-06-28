@@ -1,0 +1,26 @@
+---
+title: "SparkR"
+output: html_notebook
+---
+
+https://spark.apache.org/docs/latest/sparkr.html
+
+```{r}
+source('configuration.R')
+```
+
+
+```{r}
+Sys.setenv(SPARK_HOME = "/home/bartek/.cache/spark/spark-2.1.0-bin-hadoop2.7")
+library(SparkR, lib.loc = c(file.path(Sys.getenv("SPARK_HOME"), "R", "lib")))
+sparkR.session(master = "local[*]", sparkConfig = list(spark.driver.memory = "2g"))
+```
+
+```{r}
+sparkR.session(sparkPackages = "com.databricks:spark-avro_2.11:3.0.0")
+```
+
+```{r}
+orders <- read.df(file.path(DATA_DIR, "orders.csv"), "csv")
+```
+
