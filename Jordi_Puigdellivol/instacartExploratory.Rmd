@@ -7,8 +7,6 @@ output:
 
 
 ```{r}
-options(java.parameters = "-Xmx12g")
-
 source("readDataToMemory.R")
 readInstacart()
 
@@ -319,30 +317,55 @@ dbGetQuery(sc, .)
 
 "
 SELECT user_id, order_number,days_since_prior_order,
-SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS days_since_first_order
+coalesce(
+SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+,0)  AS days_since_first_order
 FROM orders_tbl
 where user_id <=10
 ORDER BY user_id" %>%
 dbGetQuery(sc, .)
-
 
 "
 SELECT user_id, order_number,days_since_prior_order,
-SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND CURRENT ROW) AS days_since_first_order
+coalesce(
+    SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number )
+    ,0)  AS days_since_first_order
 FROM orders_tbl
 where user_id <=10
 ORDER BY user_id" %>%
 dbGetQuery(sc, .)
 
 
+# "
+# SELECT user_id, order_number,days_since_prior_order,
+# SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND CURRENT ROW) AS days_since_first_order
+# FROM orders_tbl
+# where user_id <=10
+# ORDER BY user_id" %>%
+# dbGetQuery(sc, .)
 
-"
-SELECT user_id, order_number,days_since_prior_order,
-avg(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND 1 PRECEDING ) AS days_since_first_order
-FROM orders_tbl
-where user_id <=10
-ORDER BY user_id" %>%
-dbGetQuery(sc, .)
+# "
+# SELECT user_id, order_number,days_since_prior_order,
+# avg(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND 1 PRECEDING ) AS days_since_first_order
+# FROM orders_tbl
+# where user_id <=10
+# ORDER BY user_id" %>%
+# dbGetQuery(sc, .)
+
+```
+```{r}
+
+orders %>%
+  filter(user_id <= 10) %>%
+  select(user_id, order_number, days_since_prior_order) %>%
+  arrange(user_id, order_number) %>%
+  group_by(user_id) %>% 
+  mutate(days_since_first_order = cumsum(days_since_prior_order)) %>%
+  mutate(days_since_first_order=ifelse(is.null(days_since_prior_order), 0, days_since_first_order)) %>% 
+  arrange(user_id, order_number) 
+
+
+
 
 ```
 

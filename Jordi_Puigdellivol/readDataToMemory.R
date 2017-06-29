@@ -5,9 +5,9 @@ library(RSQLite)
 library(dplyr)
 
 config <- spark_config()
-config$`sparklyr.shell.driver-memory` <- "4G"
-config$`sparklyr.shell.executor-memory` <- "4G"
-config$`spark.yarn.executor.memoryOverhead` <- "1G"
+config$`sparklyr.shell.driver-memory` <- "8G"
+config$`sparklyr.shell.executor-memory` <- "8G"
+config$`spark.yarn.executor.memoryOverhead` <- "2G"
 sc <- spark_connect(master = "local", config = config)
 #sc <- spark_connect(master = "local")
 
