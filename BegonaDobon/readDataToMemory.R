@@ -18,6 +18,7 @@ order_products__train <- NULL
 orders <- NULL
 products <- NULL
 
+## not all tables are loaded!
 readInstacart <- function() {
   order_products__prior <<- 
     spark_read_csv(sc, "order_products__prior_tbl", 

@@ -35,8 +35,6 @@ sapply(players, class)
 
 players %>%
   sapply(class)
-<<<<<<< HEAD:BegonaDobon/footballExploratory.Rmd
-
 
 # the . means giving class as a second argument
 class %>%
@@ -44,12 +42,6 @@ class %>%
 ```
 
 
-=======
->>>>>>> upstream/master:bartek/footballExploratory.Rmd
-
-class %>%
-  sapply(players, .)
-```
 ## SELECT ~ select
 
 ```{r}
@@ -127,7 +119,6 @@ players %>%
 ```
 
 ```{r}
-<<<<<<< HEAD:BegonaDobon/footballExploratory.Rmd
 dbGetQuery(sql_con, "
 SELECT AVG(weight*0.45359237) AS mean_weight, 
       AVG(height) AS mean_height
@@ -135,17 +126,6 @@ FROM Player
 ")
 ```
 
-
-=======
-"
-SELECT AVG(weight*0.45359237) AS weight
-,   AVG(height) AS height
-FROM Player
-" %>%
-dbGetQuery(sql_con, .)
-```
-
->>>>>>> upstream/master:bartek/footballExploratory.Rmd
 ## GROUP BY
 
 ```{r}
@@ -159,7 +139,6 @@ players %>%
 ```
 
 
-<<<<<<< HEAD:BegonaDobon/footballExploratory.Rmd
 ```{r}
 dbGetQuery(sql_con, "
 SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year, 
@@ -184,8 +163,7 @@ GROUP BY year
 
 
 
-=======
->>>>>>> upstream/master:bartek/footballExploratory.Rmd
+
 ```{r}
 "
 SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year
@@ -223,14 +201,15 @@ players %>%
 ```
 
 ```{r}
+### this doesn't work
 dbGetQuery(sql_con, "
-SELECT height,
+SELECT AVG(height) AS mean_height,
       CAST(SUBSTR(birthday, 1, 4) AS INT) AS year, 
-      COUNT(1) AS nsample,
-      AVG(height) AS mean_height
+      COUNT(height) AS nsample
 FROM Player
-WHERE height >= 200
+WHERE nsample >= 200
 GROUP BY year
+
 ") %>%
   ggplot(aes(year, mean_height)) +
   geom_line(colour="darkorange") +
@@ -238,10 +217,6 @@ GROUP BY year
 
 
 ```
-
-
-
-
 
 
 
