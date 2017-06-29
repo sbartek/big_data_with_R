@@ -187,12 +187,26 @@ ORDER BY n_reorders DESC
   )
 ```
 
+<<<<<<< HEAD
+* The less reorderd products?
+=======
 * The less reorderd product?
+>>>>>>> 9ea9d20648ebb0b776f393b61880b8be9a963f8c
 
 ```{r}
 dbGetQuery(
   sc,
   "
+<<<<<<< HEAD
+SELECT a.product_id, product_name, SUM(reordered) AS n_reorders 
+FROM order_products__prior_tbl AS 
+  LEFT JOIN products_tbl AS b ON a.product_id=b.product_id
+GROUP BY a.product_id, b.product_name
+HAVING n_reorders > 0
+ORDER BY n_reorders ASC)
+"
+)
+=======
 SELECT *
 FROM (SELECT a.product_id, product_name, SUM(reordered) AS n_reorders 
       FROM order_products__prior_tbl AS a
@@ -202,6 +216,7 @@ FROM (SELECT a.product_id, product_name, SUM(reordered) AS n_reorders
 WHERE n_reorders != 0
   "
   )
+>>>>>>> 9ea9d20648ebb0b776f393b61880b8be9a963f8c
 ```
 
 * Plot histogram of number of products in an order.
@@ -326,7 +341,11 @@ ORDER BY popularity DESC
 LIMIT 10
 "
 
+<<<<<<< HEAD
+data <- list(dptId=11)
+=======
 data <- list(dptId=19)
+>>>>>>> 9ea9d20648ebb0b776f393b61880b8be9a963f8c
 
 dpt_prod_popularity_txt %>%
   whisker.render(data) %>%
