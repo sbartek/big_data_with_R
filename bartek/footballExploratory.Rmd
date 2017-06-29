@@ -187,3 +187,16 @@ AND season = '2008/2009'
 ORDER BY stage
 ")
 ```
+
+
+## Countries
+
+```{r}
+countries
+```
+
+```{r}
+players %>%
+  head
+```
+
