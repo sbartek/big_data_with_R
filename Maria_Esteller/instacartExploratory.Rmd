@@ -1,0 +1,417 @@
+---
+title: "Instacart Exploratory Analysis"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+### Order products
+
+`order_products__*.csv`
+
+These files specify which products were purchased in each order.
+
+```{r}
+dbGetQuery(sc, "SELECT * 
+           FROM order_products__prior_tbl 
+           LIMIT 10")
+```
+ 
+## orders
+
+`orders.csv`
+
+This file tells to which set (prior, train, test) an order belongs. 
+
+
+```{r}
+orders_prev <- dbGetQuery(sc, "SELECT * FROM orders_tbl LIMIT 100")
+orders_prev
+```
+ 
+```{r}
+dbGetQuery(
+  sc,
+  "
+SELECT COUNT(DISTINCT product_id) AS products
+FROM order_products__prior_tbl
+  "
+  )
+```
+
+```{r}
+products_popularity_txt <- "
+SELECT product_id
+,   COUNT(1) AS n_orders
+FROM order_products__prior_tbl
+GROUP BY product_id
+ORDER BY n_orders DESC
+LIMIT 50
+"
+
+products_popularity <-
+  dbGetQuery(sc, products_popularity_txt)
+
+products_popularity
+```
+
+## Products
+
+`products.csv`
+
+```{r}
+dbGetQuery(sc, "SELECT * FROM products_tbl LIMIT 20")
+```
+
+## Joins
+
+```{r}
+products_popularity_txt <- "
+SELECT op.product_id
+,   n_orders
+,   product_name
+FROM (
+    SELECT product_id
+    ,   COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC
+    LIMIT 30) op
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+"
+
+products_popularity <-
+  dbGetQuery(sc, products_popularity_txt)
+
+products_popularity
+```
+
+```{r}
+
+products_popularity %>%
+  ggplot(
+    aes(reorder(product_name, n_orders, function(x) x), 
+        n_orders)) +
+  geom_bar(stat="identity", fill='darkorange') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("product") +
+  ylab("Number of orders") +
+  theme_minimal()
+```
+
+```{r}
+products_popularity_txt <- "
+SELECT op.product_id
+,   n_orders
+,   product_name
+FROM (
+    SELECT product_id
+    ,   COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY orders_dow
+    LIMIT 7) op
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+"
+
+products_popularity <-
+  dbGetQuery(sc, products_popularity_txt)
+
+products_popularity
+```
+
+## Questions
+
+* Which day of week people order most fequently?
+  Primero tenemos que saber que columnas hay en la tabla 
+```{r}
+dbGetQuery(sc, "DESC orders_tbl")
+```
+  Ahora sabemos que queremos la columna del día de la semana "order_dow", de la tabla "orders_tbl" y los queremos agrupar por dias de la semana y ordenar por número de ordenes "n_orders"
+```{r}
+ day_of_week <- "
+SELECT order_dow
+,   COUNT(1) AS n_orders 
+FROM orders_tbl
+GROUP BY order_dow
+ORDER BY n_orders DESC
+LIMIT 7
+"
+
+day_of_week_popularity <-
+  dbGetQuery(sc, day_of_week)
+
+day_of_week_popularity
+```
+
+
+* The most popular hour of doing order? 
+En este caso ya sabemos cual es la columna que queremos utilizar (porque lo hemos mirado de la tabla primera que hemos sacado en el ejercicio anterior) que es "order_hour_of_day". El procedimiento es el mismo. 
+```{r}
+ hour_of_day <- "
+SELECT order_hour_of_day
+,   COUNT(1) AS n_orders 
+FROM orders_tbl
+GROUP BY order_hour_of_day
+ORDER BY n_orders DESC
+LIMIT 10
+"
+
+hour_of_day_popularity <-
+  dbGetQuery(sc,  hour_of_day)
+
+hour_of_day_popularity
+```
+* The most reordered products?
+```{r}
+dbGetQuery(sc, "DESC order_products__prior_tbl")
+```
+
+```{r}
+reordered <- "
+SELECT product_id
+,   COUNT(1) AS reordered
+FROM order_products__prior_tbl
+WHERE reordered = 1
+GROUP BY product_id
+ORDER BY reordered DESC
+LIMIT 10
+"
+
+reordered_popularity <-
+  dbGetQuery(sc, reordered)
+
+reordered_popularity
+```
+* The less reorderd product?
+* Plot histogram of number of products in an order.
+* What is the most popular department? 
+
+
+## Whisker, magrittr
+Whisker es la implentación para R de lo que en todos los otros programas se llama "tamplating". Esto sirve para insertar un dato que estamos obteniendo a un texto. por ejemplo: 
+
+Si solo tenemos 1 nombre se pondría así: 
+name<- "Maria"
+paste0("My name is", name, ".")
+
+Pero cuando tenemos una base de datos llena de nombres, tenemos que hacerlo con whisker. 
+
+```{r}
+library(whisker)
+library(magrittr)
+
+product_times_ordered_txt <- "
+SELECT n_orders
+,   COUNT(DISTINCT user_id) AS n_users
+FROM (
+    SELECT o.user_id
+    ,   COUNT(DISTINCT op.order_id) AS n_orders
+    FROM (
+        SELECT order_id
+        FROM order_products__prior_tbl
+        WHERE product_id = {{productId}}
+    ) op
+    LEFT JOIN (
+        SELECT  user_id
+        ,   order_id
+        FROM orders_tbl) o
+    ON op.order_id = o.order_id
+    GROUP BY o.user_id) opo
+GROUP BY n_orders
+ORDER BY n_orders
+"
+
+data <- list(productId = 24852)
+
+product_times_ordered_txt %>%
+  whisker.render(data) %>%
+  cat #Cat es un print, lo usamos para poder ver lo que hemos hecho como resultado de esta parte, pero no sería necesario si supieramos seguro que lo tenemos bien
+```
+
+```{r}
+product_times_ordered_txt %>%
+  whisker.render(data) %>%
+  dbGetQuery(sc, .) %>%
+  ggplot(aes(n_orders, n_users)) + 
+  geom_line() +
+  theme_minimal()
+```
+
+## Questions
+
+* For given department, give a list of 10 the most popular product (with templating department)
+```{r}
+library(whisker)
+library(magrittr)
+
+product_department_ordered_txt <- "
+SELECT n_orders
+,   COUNT(DISTINCT user_id) AS n_users
+FROM (
+    SELECT o.user_id
+    ,   COUNT(DISTINCT op.order_id) AS n_orders
+    FROM (
+        SELECT order_id
+        FROM order_products__prior_tbl
+        WHERE department_id = {{departmentId}}
+    ) op
+    LEFT JOIN (
+        SELECT  department_id
+        ,   order_id
+        FROM products_tbl) d
+    ON d.order_id = op.order_id
+    GROUP BY d.department_id) opo
+GROUP BY department_id
+ORDER BY n_orders
+"
+
+data <- list(productId = 24852)
+
+product_department_ordered_txt %>%
+  whisker.render(data) %>%
+  cat 
+```
+
+```{r}
+product_department_ordered_txt %>%
+  whisker.render(data) %>%
+  dbGetQuery(sc, .) %>%
+  ggplot(aes(department_id, n_users)) + 
+  geom_line() +
+  theme_minimal()
+```
+
+* For given day of the week, rank department popularity. 
+
+
+*For given department, plot the most popular product (with templating department).
+* For given day, rank department popularity.
+
+## More on orders (Window Functions)
+
+
+
+```{r}
+dbGetQuery(sc, 
+"
+SELECT days_since_prior_order
+,   COUNT(1) AS N
+FROM orders_tbl
+GROUP BY days_since_prior_order
+") 
+```
+
+
+```{r}
+dbGetQuery(sc, 
+"SELECT * 
+FROM orders_tbl
+WHERE user_id <= 10
+")
+```
+
+```{r}
+dbGetQuery(sc, 
+"SELECT user_id
+,   order_id
+,   FIRST_VALUE(order_id)  OVER(PARTITION BY user_id ORDER BY order_number) AS first_order
+FROM orders_tbl
+WHERE user_id <= 10 
+")
+```
+* Product that is usually orders in numerous baskets
+
+```{r}
+"
+SELECT product_id
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+* Could modify the query and add prduct name? %Para solucionar este, lo que hacemos es usar el mismo que el anterior y le añadimos una columna más con LEFT JOINT, pero como esto no lo coge bien, tenemos que meter las peticiones unas dentro de otras 
+```{r}
+"
+SELECT  product_name
+,   avg_products_number
+,    p.product_id
+FROM (
+    SELECT product_id
+    ,   AVG(products_number) AS avg_products_number
+    FROM (
+        SELECT order_id
+        ,   product_id
+        ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+        FROM order_products__train_tbl
+    ) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100) apn
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON p.product_id = apn.product_id
+" %>%
+dbGetQuery(sc, .)
+```
+
+* Product that is usually orders in small baskets
+
+```{r}
+"
+SELECT  product_name
+,   avg_products_number
+,    p.product_id
+FROM (
+    SELECT product_id
+    ,   AVG(products_number) AS avg_products_number
+    FROM (
+        SELECT order_id
+        ,   product_id
+        ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+        FROM order_products__train_tbl
+    ) pn
+GROUP BY product_id
+ORDER BY avg_products_number ASC
+LIMIT 100) apn
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON p.product_id = apn.product_id
+" %>%
+dbGetQuery(sc, .)
+```
+
+* For 10 first users and all their orders find days since first order

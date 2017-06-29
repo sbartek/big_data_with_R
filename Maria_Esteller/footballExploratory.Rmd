@@ -1,0 +1,224 @@
+---
+title: "Football Exploratory Analysis"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+```{r}
+source("readDataToMemory.R")
+readFootball()
+
+library(ggplot2)
+library(ggthemes)
+
+print(dbListTables(sql_con))
+```
+
+## Pipes
+Las pipes son muy interesantes, lo que les decimos se que queremos mandar X cosa como argumento en alguna función. En este caso la funición head() requiere solo un argumento, por lo que podríamos poner head(.) o ponerlo directamente como head. 
+```{r}
+players %>%
+  head
+```
+
+```{r}
+players %>%
+  colnames
+```
+```{r}
+players %>%
+  sapply(class)
+```
+
+
+
+## SELECT ~ select
+
+```{r}
+players %>%
+  head %>%
+  select(player_name, birthday)
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT player_name
+,   birthday
+FROM Player
+LIMIT 6
+")
+```
+
+## WHERE ~ filter
+
+```{r}
+players %>%
+  filter(birthday >= "1998") %>%
+  head
+```
+
+## ORDER ~ arrange
+
+```{r}
+players %>%
+  arrange(birthday) %>%
+  head
+```
+
+## aggregators ~ summarise
+
+```{r}
+players %>%
+  summarise(weight=mean(weight), height=mean(height))
+```
+
+## mutate
+
+```{r}
+players %>%
+  mutate(weight_kg = weight*0.45359237) %>%
+  summarise(weight=mean(weight_kg), height=mean(height))
+```
+
+```{r}
+"
+SELECT AVG(weight*0.45359237) AS weight
+, AVG(height) AS height
+FROM Player
+" %>%
+dbGetQuery(sql_con, .)
+```
+
+## GROUP BY
+En el primer ejemplo queremos agrupar por el año de nacimiento (para ello cogemos los primeros digitos de la columna bitrhday y luego agrupamos, en este caso agrupamos por peso)
+```{r}
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(weight=mean(height)) %>%
+  ggplot(aes(year, weight)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```
+En este caso agrupamos por el número de muestras que tenemos cada año. 
+```{r}
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(nsample=n()) %>%
+  ggplot(aes(year, nsample)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```
+
+Como la muestra es muy pequeña, para algunos años, el grafico sale raro. Así que solo vamos a hacer el gráfico para los años que haya más de 200 muestras. 
+```{r} 
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(weight=mean(height), nsamples=n()) %>%
+  filter(nsamples >= 200) %>%
+  ggplot(aes(year, weight)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```
+
+#Exercise
+
+* Translate from SQL to dply or from dply to SQL
+a) Form SQL to dply
+```{r}
+dbGetQuery(sql_con, "
+SELECT *
+FROM Match
+LIMIT 6
+")
+```
+
+
+```{r}
+games %>%
+  head(.,n = 6L)
+```
+
+b) Form SQL to dply
+```{r}
+dbGetQuery(sql_con, "
+SELECT country_id
+,   COUNT(1) AS n
+FROM Match
+GROUP BY country_id
+ORDER BY n DESC
+")
+```
+
+```{r}
+games %>%
+  arrange(birthday) %>%
+  head
+```
+
+
+c) 
+
+```{r}
+countries
+```
+
+
+```{r}
+games %>%
+  left_join(countries, by=c("country_id" = "id")) %>%
+  select(name, home_team_api_id) %>%
+  group_by(name) %>%
+  summarise(teams = n_distinct(home_team_api_id)) %>%
+  arrange(desc(teams))
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT *
+FROM Player_Attributes
+LIMIT 6
+")
+
+```
+
+* From where do players with higest accuracy come from?
+
+* Add team name and translate to dplyr
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT stage, home_team_api_id, home_team_goal
+FROM Match
+WHERE country_id = 1
+AND season = '2008/2009'
+ORDER BY stage
+")
+```
+
+```{r}
+"
+SELECT CAST(SUBSTR(birthday,1,4) AS INT) AS year
+, COUNT(1) 
+FROM Player
+GROUP BY CAST(SUBSTR(birthday,1,4) AS INT)
+LIMIT 10
+" %>%
+dbGetQuery(sql_con, .)  %>%
+  ggplot(aes(year,n))+
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```
+
+```{r}
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(weight=mean(height)) %>%
+  ggplot(aes(year, weight)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+```
