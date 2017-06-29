@@ -7,6 +7,7 @@ output:
 
 
 ```{r}
+spark_memory = "3G"
 source("readDataToMemory.R")
 readInstacart()
 
@@ -35,8 +36,7 @@ This file tells to which set (prior, train, test) an order belongs.
 
 
 ```{r}
-orders_prev <- dbGetQuery(sc, "SELECT * FROM orders_tbl LIMIT 100")
-orders_prev
+dbGetQuery(sc, "SELECT * FROM orders_tbl LIMIT 100")
 ```
  
 ```{r}
@@ -59,10 +59,7 @@ ORDER BY n_orders DESC
 LIMIT 50
 "
 
-products_popularity <-
-  dbGetQuery(sc, products_popularity_txt)
-
-products_popularity
+dbGetQuery(sc, products_popularity_txt)
 ```
 
 ## Products
@@ -94,15 +91,11 @@ LEFT JOIN (
 ON op.product_id = p.product_id
 "
 
-products_popularity <-
-  dbGetQuery(sc, products_popularity_txt)
-
-products_popularity
+dbGetQuery(sc, products_popularity_txt)
 ```
 
 ```{r}
-
-products_popularity %>%
+dbGetQuery(sc, products_popularity_txt) %>%
   ggplot(
     aes(reorder(product_name, n_orders, function(x) x), 
         n_orders)) +
@@ -133,20 +126,49 @@ LEFT JOIN (
 ON op.product_id = p.product_id
 "
 
-products_popularity <-
-  dbGetQuery(sc, products_popularity_txt)
-
-products_popularity
+dbGetQuery(sc, products_popularity_txt)
 ```
 
 ## Questions
 
 * Which day of week people order most fequently?
+```{r}
+result <- dbGetQuery(sc, "SELECT order_dow, count(1) as num FROM orders_tbl group by order_dow order by order_dow")
+ggplot(result) + geom_bar(aes(x=order_dow, y=num), stat = "identity")
+print(result)
+```
+
 * The most popular hour of doing order? 
+```{r}
+result <- dbGetQuery(sc, "SELECT order_hour_of_day, count(1) as num FROM orders_tbl group by order_hour_of_day order by order_hour_of_day")
+ggplot(result) + geom_bar(aes(x=order_hour_of_day, y=num), stat = "identity")
+print(result)
+```
+
 * The most reordered products?
+```{r}
+result <- dbGetQuery(sc, "SELECT product_id, sum(reordered) as num FROM order_products__prior_tbl group by product_id order by sum(reordered) desc limit 100")
+print(result)
+```
+
 * The less reorderd product?
+```{r}
+result <- dbGetQuery(sc, "select * from (SELECT product_id, sum(reordered) as num FROM order_products__prior_tbl group by product_id order by sum(reordered)) t where num>1 order by num asc limit 100")
+result %>% filter(num>1) %>% head
+```
+
 * Plot histogram of number of products in an order.
+```{r}
+result <- dbGetQuery(sc, "SELECT order_id, count(1) as num FROM order_products__prior_tbl group by order_id")
+ggplot(result) + geom_histogram(aes(x = num))
+```
+
 * What is the most popular department? 
+```{r}
+# result <- dbGetQuery(sc, "SELECT order_hour_of_day, count(1) as num FROM orders_tbl group by order_hour_of_day order by order_hour_of_day")
+result
+```
+
 
 ## Whisker, magrittr
 
@@ -217,6 +239,7 @@ FROM orders_tbl
 WHERE user_id <= 10
 ")
 ```
+
 ```{r}
 dbGetQuery(sc, 
 "SELECT user_id
@@ -227,3 +250,326 @@ WHERE user_id <= 10
 ")
 ```
 
+```{r}
+dbGetQuery(sc, 
+"SELECT user_id
+,   order_id
+,   FIRST_VALUE(order_id)  OVER(partition by user_id ORDER BY order_number) AS first_order
+FROM orders_tbl
+WHERE user_id <= 10 
+")
+```
+
+
+```{r}
+"
+SELECT product_id
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+
+```{r}
+"
+SELECT product_id
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT
+      t1.product_id,
+      t2.products_number
+    FROM order_products__train_tbl t1,
+     (
+    SELECT order_id
+    ,   COUNT(1) AS products_number
+    FROM order_products__train_tbl
+  GROUP BY order_id) t2
+where 
+t2.order_id = t1.order_id
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+
+```{r}
+"
+SELECT product_id
+,   AVG(products_number) AS avg_products_number
+,sum(case when products_number > 10 then 1 else 0 end)/count(1),
+count(1)
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+
+
+```{r}
+Ex1 <- dbGetQuery(sc,"SELECT order_dow, count(1) number_of_orders
+                  FROM orders_tbl 
+                  GROUP BY order_dow 
+                  ORDER BY count(1) desc") #d0
+Ex1 %>% ggplot()+geom_col( aes(order_dow, number_of_orders) )
+
+
+```
+
+
+```{r}
+Ex2 <- dbGetQuery(sc,"SELECT order_hour_of_day, count(1) number_of_orders 
+                  FROM orders_tbl 
+                  GROUP BY order_hour_of_day 
+                  ORDER BY count(1) desc") #10h
+Ex2 %>% ggplot()+geom_col( aes(order_hour_of_day, number_of_orders) )
+
+```
+
+
+```{r}
+Ex3 <- dbGetQuery(sc,"SELECT product_id, count(1) number_of_reorders 
+                  FROM order_products__prior_tbl 
+                  WHERE reordered=1 
+                  GROUP BY product_id 
+                  ORDER BY count(1) desc")
+Ex3 %>% head() %>% mutate(product_id=as.factor(product_id)) %>% ggplot()+geom_col( aes(product_id, number_of_reorders) )
+Ex3 %>% tail() %>% mutate(product_id=as.factor(product_id)) %>% ggplot()+geom_col( aes(product_id, number_of_reorders) )
+
+```
+
+
+```{r}
+EX5 <- dbGetQuery(sc,"SELECT order_id, count(1) number_of_products FROM order_products__prior_tbl GROUP BY order_id")
+
+EX5 %>% ggplot()+geom_histogram(aes(number_of_products),binwidth = 1)
+
+
+```
+
+
+```{r}
+EX6 <- dbGetQuery(sc,"SELECT department_id, count(1) number_of_products FROM order_products__prior_tbl t1 ,products_tbl t2 where t1.product_id=t2.product_id GROUP BY department_id")
+EX6 %>% mutate(department_id=as.factor(department_id)) %>% ggplot()+geom_col(aes(department_id,number_of_products))
+
+
+
+
+
+
+
+```
+
+
+## Whisker, magrittr
+
+```{r}
+library(whisker)
+library(magrittr)
+
+product_times_ordered_txt <- "
+SELECT n_orders
+,   COUNT(DISTINCT user_id) AS n_users
+FROM (
+    SELECT o.user_id
+    ,   COUNT(DISTINCT op.order_id) AS n_orders
+    FROM (
+        SELECT order_id
+        FROM order_products__prior_tbl
+        WHERE product_id = {{productId}}
+    ) op
+    LEFT JOIN (
+        SELECT  user_id
+        ,   order_id
+        FROM orders_tbl) o
+    ON op.order_id = o.order_id
+    GROUP BY o.user_id) opo
+GROUP BY n_orders
+ORDER BY n_orders
+"
+
+data <- list(productId = 24852)
+
+product_times_ordered_txt %>%
+  whisker.render(data) %>%
+  cat
+```
+```{r}
+product_times_ordered_txt %>%
+  whisker.render(data) %>%
+  dbGetQuery(sc, .) %>%
+  ggplot(aes(n_orders, n_users)) + 
+  geom_line() +
+  theme_minimal()
+```
+
+## Questions
+
+* For given department, plot the most popular product (with templating department).
+* For given day, rank department popularity.
+
+
+## More on orders (Window Functions)
+
+
+
+```{r}
+dbGetQuery(sc, 
+"
+SELECT days_since_prior_order
+,   COUNT(1) AS N
+FROM orders_tbl
+GROUP BY days_since_prior_order
+") 
+
+
+
+```
+
+
+```{r}
+dbGetQuery(sc, 
+"SELECT * 
+FROM orders_tbl
+WHERE user_id <= 10
+")
+```
+
+```{r}
+dbGetQuery(sc, 
+"SELECT user_id
+,   order_id
+,   FIRST_VALUE(order_id)  OVER(partition by user_id ORDER BY order_number) AS first_order
+FROM orders_tbl
+WHERE user_id <= 10 
+")
+```
+* Product that is usually orders in numerous baskets
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+"
+SELECT product_name
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn,
+ products_tbl p
+where pn.product_id = p.product_id
+GROUP BY product_name
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+* Could modify the query and add prduct name?
+
+* Prduct that is usualy orders in small baskets.
+```{r}
+"
+SELECT product_name
+,   AVG(products_number) AS avg_products_number
+FROM (
+
+
+
+
+
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+
+    FROM order_products__train_tbl
+) pn,
+ products_tbl p
+where pn.product_id = p.product_id
+
+
+
+
+GROUP BY product_name
+ORDER BY avg_products_number 
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+
+*for 10 first users and all their orders find days since first order.
+```{r}
+
+"
+SELECT user_id, order_number,days_since_prior_order,
+SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS days_since_first_order
+FROM orders_tbl
+where user_id <=10
+ORDER BY user_id" %>%
+dbGetQuery(sc, .)
+
+
+"
+SELECT user_id, order_number,days_since_prior_order,
+SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND CURRENT ROW) AS days_since_first_order
+FROM orders_tbl
+where user_id <=10
+ORDER BY user_id" %>%
+dbGetQuery(sc, .)
+
+
+
+"
+SELECT user_id, order_number,days_since_prior_order,
+avg(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND 1 PRECEDING ) AS days_since_first_order
+FROM orders_tbl
+where user_id <=10
+ORDER BY user_id" %>%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+dbGetQuery(sc, .)
+
+```
