@@ -18,6 +18,8 @@ print(dbListTables(sql_con))
 ## Pipes
 
 ```{r}
+head(players)
+
 players %>%
   head
 ```
@@ -27,12 +29,14 @@ players %>%
   colnames
 ```
 ```{r}
+sapply(players, class)
+
 players %>%
   sapply(class)
+
+class %>%
+  sapply(players, .)
 ```
-
-
-
 ## SELECT ~ select
 
 ```{r}
@@ -81,6 +85,15 @@ players %>%
   summarise(weight=mean(weight_kg), height=mean(height))
 ```
 
+```{r}
+"
+SELECT AVG(weight*0.45359237) AS weight
+,   AVG(height) AS height
+FROM Player
+" %>%
+dbGetQuery(sql_con, .)
+```
+
 ## GROUP BY
 
 ```{r}
@@ -92,12 +105,17 @@ players %>%
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
+
+
 ```{r}
-players %>%
-  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
-  group_by(year) %>%
-  summarise(nsample=n()) %>%
-  ggplot(aes(year, nsample)) +
+"
+SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year
+,   COUNT(1) AS n
+FROM Player
+GROUP BY CAST(SUBSTR(birthday, 1, 4) AS INT) 
+" %>%
+dbGetQuery(sql_con, .) %>%
+  ggplot(aes(year, n)) +
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
@@ -106,7 +124,7 @@ players %>%
 players %>%
   mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
   group_by(year) %>%
-  summarise(weight=mean(height), nsamples=n()) %>%
+  summarise(height=mean(height), nsamples=n()) %>%
   filter(nsamples >= 200) %>%
   ggplot(aes(year, weight)) +
   geom_line(colour="darkorange") +
