@@ -205,10 +205,8 @@ hour_popularity <-
 hour_popularity
 ```
 
-* The most reordered products?
+* Which products were reordered?
 ```{r}
-# which products were reordered?
-
 reordered_products_txt <- "
 SELECT product_id
 FROM order_products__prior_tbl
@@ -221,6 +219,7 @@ reordered_products <-
 
 reordered_products
 ``` 
+* The most reordered products?
 
 
 ```{r}
@@ -235,13 +234,13 @@ FROM (
     FROM order_products__prior_tbl
     WHERE reordered = 1
     GROUP BY product_id
-    ORDER BY n_orders DESC
-    LIMIT 30) op
+    ORDER BY n_orders DESC) op
 LEFT JOIN (
     SELECT product_id
     ,   product_name
     FROM products_tbl) p
 ON op.product_id = p.product_id
+LIMIT 10
 "
 
 reordered_products_popularity <-
@@ -263,15 +262,15 @@ FROM (
     SELECT product_id
     ,   COUNT(1) AS n_orders
     FROM order_products__prior_tbl
-    WHERE reordered = 1
+    WHERE reordered == 1
     GROUP BY product_id
-    ORDER BY n_orders ASC
-    LIMIT 30) op
+    ORDER BY n_orders ASC) op
 LEFT JOIN (
     SELECT product_id
     ,   product_name
     FROM products_tbl) p
 ON op.product_id = p.product_id
+LIMIT 10
 "
 
 reordered_products_popularity <-
@@ -296,17 +295,15 @@ number_products_order <-
 
 ```
 
-
 ```{r}
 number_products_order %>%
-  ggplot(aes(n_products)) + geom_histogram()
+  ggplot(aes(n_products)) + geom_histogram(binwidth = 5)
 
 ```
 
 * What is the most popular department? 
 
-```{r, eval=FALSE}
-### finish this
+```{r}
 dept_popularity_txt <- "
 SELECT department_id, 
   SUM(n_orders) AS orders_dept
@@ -337,6 +334,7 @@ dept_popularity <-
 dept_popularity
 
 ```
+
 * Which product is usually bought last? Which department/aisle belongs to?
 
 
@@ -396,20 +394,74 @@ product_times_ordered_txt %>%
 
 ```{r}
 top10_product_ordered_txt <- "
-### 
-
+SELECT op.product_id,
+    n_orders,
+   product_name,
+    department_id
+FROM (
+    SELECT product_id,
+       COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC
+    ) op
+LEFT JOIN (
+    SELECT product_id,
+        product_name,
+        department_id
+    FROM products_tbl
+    WHERE department_id == {{deptId}} ) p
+ON op.product_id = p.product_id
+WHERE department_id == {{deptId}}
+LIMIT 10
 "
 
-data <- list(deptId = 4)
+#data <- list(deptId = 4)
+data <- list(deptId = 10)
 
 top10_product_ordered_txt %>%
-  whisker.render(data) %>%
-  dbGetQuery(sc, .)
+   whisker.render(data) %>%
+   dbGetQuery(sc, .)
 
 ```
 
-
 * For given day, rank department popularity.
+
+```{r}
+day_dept_popularity_txt <- "
+SELECT department_id,
+      COUNT(up.product_id) AS n_orders
+FROM (
+            SELECT op.order_id, product_id 
+            FROM (
+                  SELECT order_id
+                  FROM orders_tbl
+                  WHERE order_dow == {{day}}
+                ) op
+            LEFT JOIN (
+                SELECT order_id, product_id
+                FROM order_products__prior_tbl
+                ) p
+            ON op.order_id = p.order_id
+      ) up
+LEFT JOIN (
+        SELECT department_id, product_id
+        FROM products_tbl        
+          ) u
+ON up.product_id = u.product_id
+
+GROUP BY department_id
+ORDER BY n_orders DESC
+LIMIT 1
+"
+
+data <- list(day = 5)
+
+day_dept_popularity_txt %>%
+   whisker.render(data) %>%
+   dbGetQuery(sc, .)
+
+```
 
 ## More on orders (Window Functions)
 
@@ -456,7 +508,7 @@ WHERE user_id <= 10
 ")
 ```
 
-Product that is usually ordered in numerous baskets
+* Product that is usually ordered in numerous baskets
 
 ```{r}
 "SELECT product_id
@@ -474,9 +526,27 @@ LIMIT 100
  dbGetQuery(sc, .)
 ```
 
-Could modify the query and add product name?
+* Could modify the query and add product name?
 
-Product that is usually ordered in small baskets
+* Product that is usually ordered in small baskets
 
-For 10 first users and all their orders find days since first order
+* For 10 first users and all their orders find days since first order
 
+```{r}
+orders %>%
+  filter(user_id <= 10) %>%
+  select(user_id, order_number, days_since_prior_order) %>%
+  arrange(user_id, order_number) %>%
+  mutate(days_since_first_order = cumsum(days_since_prior_order)) %>%
+  mutate(days_since_first_order=ifelse(is.null(days_since_prior_order), 0, days_since_first_order))
+```
+
+
+```{r, eval=FALSE}
+### finish this
+SELECT user_id, order_number, days_since_prior_order, 
+SUM(days_since_prior_order) OVER (partition by order_number) ORDER BY order_number ROWS BETWEEN PRECEDING AND CURRENT ROW
+FROM order_tbl
+WHERE user_id <= 10
+
+```
