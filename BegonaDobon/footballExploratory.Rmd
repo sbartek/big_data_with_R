@@ -18,6 +18,8 @@ print(dbListTables(sql_con))
 ## Pipes
 
 ```{r}
+head(players)
+
 players %>%
   head
 ```
@@ -29,8 +31,11 @@ players %>%
 
 
 ```{r}
+sapply(players, class)
+
 players %>%
   sapply(class)
+<<<<<<< HEAD:BegonaDobon/footballExploratory.Rmd
 
 
 # the . means giving class as a second argument
@@ -39,7 +44,12 @@ class %>%
 ```
 
 
+=======
+>>>>>>> upstream/master:bartek/footballExploratory.Rmd
 
+class %>%
+  sapply(players, .)
+```
 ## SELECT ~ select
 
 ```{r}
@@ -117,6 +127,7 @@ players %>%
 ```
 
 ```{r}
+<<<<<<< HEAD:BegonaDobon/footballExploratory.Rmd
 dbGetQuery(sql_con, "
 SELECT AVG(weight*0.45359237) AS mean_weight, 
       AVG(height) AS mean_height
@@ -125,6 +136,16 @@ FROM Player
 ```
 
 
+=======
+"
+SELECT AVG(weight*0.45359237) AS weight
+,   AVG(height) AS height
+FROM Player
+" %>%
+dbGetQuery(sql_con, .)
+```
+
+>>>>>>> upstream/master:bartek/footballExploratory.Rmd
 ## GROUP BY
 
 ```{r}
@@ -138,6 +159,7 @@ players %>%
 ```
 
 
+<<<<<<< HEAD:BegonaDobon/footballExploratory.Rmd
 ```{r}
 dbGetQuery(sql_con, "
 SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year, 
@@ -162,12 +184,17 @@ GROUP BY year
 
 
 
+=======
+>>>>>>> upstream/master:bartek/footballExploratory.Rmd
 ```{r}
-players %>%
-  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
-  group_by(year) %>%
-  summarise(nsample=n()) %>%
-  ggplot(aes(year, nsample)) +
+"
+SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year
+,   COUNT(1) AS n
+FROM Player
+GROUP BY CAST(SUBSTR(birthday, 1, 4) AS INT) 
+" %>%
+dbGetQuery(sql_con, .) %>%
+  ggplot(aes(year, n)) +
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
