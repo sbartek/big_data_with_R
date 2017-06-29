@@ -1,8 +1,9 @@
 **/.Rhistory
-<<<<<<< HEAD
-=======
+
 **/.RData
->>>>>>> upstream/master
+
+**/.Rproj.user/*
+**/.Rprofile
 
 data/*
 football_data/*
@@ -16,9 +17,7 @@ instacart_data/*
 \#*
 .\#*
 
-<<<<<<< HEAD
-.DS_Store
-=======
 .DS_Store
 .Rproj.user
->>>>>>> upstream/master
+
+**/merastore_db/*

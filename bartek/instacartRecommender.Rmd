@@ -1,0 +1,55 @@
+---
+title: "Instacart Recommender"
+output: html_notebook
+---
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+```{r}
+order_products__prior %>%
+  select(order_id, product_id) %>%
+  left_join(orders, by="order_id") %>%
+  filter(user_id <= 10) %>% 
+  select(product_id, user_id) %>%
+  group_by(user_id, product_id) %>%
+  summarise(rating = n()) %>%
+  rename(user = user_id) %>%
+  mutate(item=product_id) %>%
+  select(user, item, rating) ->
+  user_item_rating
+```
+
+
+```{r}
+user_item_rating
+```
+
+
+```{r}
+explicit_model <- ml_als_factorization( user_item_rating, iter.max = 5, regularization.parameter = 0.01)
+```
+
+```{r}
+explicit_model
+```
+
+
+```{r}
+order_products__prior %>%
+  colnames %>%
+  print
+
+orders %>%
+  colnames %>%
+  print
+```
+
