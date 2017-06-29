@@ -150,6 +150,8 @@ products_popularity
 * What is the most popular department? 
 
 ```{r}
+# * Which day of week people order most fequently?
+
 Ex1 <- dbGetQuery(sc,"SELECT order_dow, count(1) number_of_orders
                   FROM orders_tbl 
                   GROUP BY order_dow 
@@ -157,6 +159,8 @@ Ex1 <- dbGetQuery(sc,"SELECT order_dow, count(1) number_of_orders
 Ex1 %>% ggplot()+geom_col( aes(order_dow, number_of_orders) )
 ```
 ```{r}
+# * The most popular hour of doing order? 
+
 Ex2 <- dbGetQuery(sc,"SELECT order_hour_of_day, count(1) number_of_orders 
                   FROM orders_tbl 
                   GROUP BY order_hour_of_day 
@@ -165,6 +169,9 @@ Ex2 %>% ggplot()+geom_col( aes(order_hour_of_day, number_of_orders) )
 ```
 
 ```{r}
+# * The most reordered products?
+# * The less reordered product?
+
 Ex3 <- dbGetQuery(sc,"SELECT product_id, count(1) number_of_reorders 
                   FROM order_products__prior_tbl 
                   WHERE reordered=1 
@@ -175,10 +182,28 @@ Ex3 %>% tail() %>% mutate(product_id=as.factor(product_id)) %>% ggplot()+geom_co
 ```
 
 ```{r}
-EX5 <- dbGetQuery(sc,"SELECT order_id, count(1) number_of_products FROM order_products__prior_tbl GROUP BY order_id")
+# * Plot histogram of number of products in an order.
+EX5a <- dbGetQuery(sc,"
+SELECT order_id, count(1) number_of_products 
+  FROM order_products__prior_tbl 
+GROUP BY order_id") %>% 
+  ggplot()+geom_bar(aes(number_of_products),binwidth = 1)+ylab("number_of_orders")
 
-EX5 %>% ggplot()+geom_histogram(aes(number_of_products),binwidth = 1)
 
+
+EX5b <- " 
+SELECT count(1) number_of_orders,number_of_products
+FROM (
+      SELECT order_id, count(1) number_of_products 
+        FROM order_products__prior_tbl 
+    GROUP BY order_id) T 
+GROUP BY number_of_products" %>% 
+  dbGetQuery(sc, .)  %>% 
+  ggplot()+
+  geom_col(aes(number_of_products,number_of_orders))
+geom_bar
+EX5a
+EX5b
 ```
 ```{r}
 EX6 <- dbGetQuery(sc,"SELECT department_id, count(1) number_of_products FROM order_products__prior_tbl t1 ,products_tbl t2 where t1.product_id=t2.product_id GROUP BY department_id")
@@ -363,9 +388,5 @@ orders %>%
   mutate(days_since_first_order = cumsum(days_since_prior_order)) %>%
   mutate(days_since_first_order=ifelse(is.null(days_since_prior_order), 0, days_since_first_order)) %>% 
   arrange(user_id, order_number) 
-
-
-
-
 ```
 
