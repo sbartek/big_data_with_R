@@ -33,6 +33,10 @@ explicit_model <- ml_als_factorization(movie_ratings, iter.max = 5, regularizati
 explicit_model$item.factors
 ```
 
+```{r}
+explicit_model
+```
+
 
 ## R Markdown
 
