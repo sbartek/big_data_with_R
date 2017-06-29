@@ -208,11 +208,14 @@ WHERE n_reorders != 0
 
 ```{r}
 products_order_txt <- "
-SELECT order_id, COUNT(1) AS n_prod
-FROM order_products__train_tbl
-GROUP BY order_id
-ORDER BY n_prod DESC
-LIMIT 30
+SELECT n_prod
+,   COUNT(order_id) AS n_orders
+FROM (
+  SELECT order_id, COUNT(1) AS n_prod
+  FROM order_products__prior_tbl
+  GROUP BY order_id
+) a
+GROUP BY n_prod
 "
 
 products_order <-
@@ -223,15 +226,30 @@ products_order
 
 ```{r}
 products_order %>%
+  filter(n_prod <= 50) %>%
   ggplot(
-    aes(reorder(order_id, n_prod, function(x) x), 
-        n_prod)) +
-  geom_bar(stat="identity", fill='darkolivegreen') +
-  coord_flip() + 
+    aes(n_prod, n_orders)) +
+  geom_bar(stat="identity", fill='turquoise') +
   scale_y_continuous(label=scales::comma) +
   xlab("Order") +
   ylab("Number of products") +
   theme_minimal()
+```
+
+```{r}
+order_products__prior %>%
+  group_by(order_id) %>%
+  summarise(n_prod = n()) %>%
+  group_by(n_prod) %>%
+  summarise(n_orders = n())%>%
+  filter(n_prod <= 50) %>%
+  collect %>%   #li hem de dir que executi fins aquí per a poder continuar amb l'histograma
+  ggplot(aes(n_prod, n_orders)) +
+    geom_bar(stat="identity", fill='turquoise') +
+    scale_y_continuous(label=scales::comma) +
+    xlab("Order") +
+    ylab("Number of products") +
+    theme_minimal()
 ```
 
 * What is the most popular department? 
@@ -520,18 +538,48 @@ ORDER BY user_id
 ```{r}
 dbGetQuery(sc, 
 "
-
 SELECT user_id
 ,   order_id
+,   order_number
 ,   days_since_prior_order
 ,   IF(days_since_first_order IS NULL, 0, days_since_first_order) as days_since_first_order
 FROM(
 SELECT user_id
 ,   order_id
+,   order_number
 ,   days_since_prior_order
 ,   SUM(days_since_prior_order) OVER (partition by user_id ORDER BY order_number) AS days_since_first_order
 FROM orders_tbl
 WHERE user_id <= 10 
 ) a
+ORDER BY user_id
 ")
+```
+
+```{r}
+"
+SELECT user_id
+,   order_id
+,   order_number
+,   days_since_prior_order
+,   COALESCE(
+      SUM(days_since_prior_order) OVER
+      (PARTITION by user_id ORDER BY order_number),
+      0) AS days_since_first_order
+FROM orders_tbl
+WHERE user_id <= 10 
+ORDER BY user_id
+,   order_number
+" %>%
+  dbGetQuery(sql_con,.)
+```
+
+
+```{r}
+orders %>%
+  filter(user_id <= 10) %>%
+  select(user_id, order_number, days_since_prior_order) %>%
+  arrange(user_id, order_number) %>%
+  mutate(days_since_first_order = cumsum(days_since_prior_order)) %>%
+  mutate(days_since_first_order=ifelse(is.null(days_since_prior_order), 0, days_since_first_order))
 ```

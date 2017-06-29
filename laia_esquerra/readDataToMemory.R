@@ -32,6 +32,11 @@ readInstacart <- function() {
 
 
 players <- NULL
+player_attr <- NULL
+countries <- NULL
+leagues <- NULL
+games <- NULL
+teams <- NULL
 sql_con <- NULL
 
 readFootball <- function() {
@@ -40,8 +45,11 @@ readFootball <- function() {
     dbname=file.path(DATA_DIR, "database.sqlite")
   )
   players <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Player"))
+  player_attr <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Player_Attributes"))
   countries <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Country"))
+  leagues <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM League"))
   games <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Match"))
+  teams <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Team"))
   
   #dbDisconnect(sql_con)
 }

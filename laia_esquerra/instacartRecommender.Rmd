@@ -1,0 +1,78 @@
+---
+title: "Instacart Recommender"
+author: "Laia Esquerrà"
+output: html_notebook
+---
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+```{r}
+order_products__prior %>%
+  select(order_id, product_id) %>%
+  left_join(orders, by="order_id") %>%
+  filter(user_id <= 10) %>% #d'entrada ho fem només per a 10 usuaris, es recomana anar augmentant la mida poc a poc
+  select(product_id, user_id) %>%
+  group_by(user_id, product_id) %>%
+  summarise(rating = n()) %>%
+  rename(user = user_id) %>%
+  mutate(item=product_id) %>%
+  select(user, item, rating) ->
+  user_item_rating
+```
+
+
+```{r}
+user_item_rating
+```
+
+```{r}
+explicit_model <- ml_als_factorization( user_item_rating, iter.max = 5, regularization.parameter = 0.01)
+```
+
+```{r}
+explicit_model
+```
+
+```{r}
+order_products__prior %>%
+  colnames %>%
+  print
+
+orders %>%
+  colnames %>%
+  print
+```
+
+**Matriu A**
+
+```{r}
+U <- as.matrix(explicit_model$user.factors)
+V <- as.matrix(explicit_model$item.factors)
+A2 <- U%*%t(V)
+
+library(whisker)
+library(magrittr)
+
+i_max <- apply(A2,1,max)
+which(A2[6,]==i_max[6])
+
+recom_prod_txt <- "which(A2[{{userId}},]==i_max[{{userID}}])"
+
+data <- list(userId=1)
+
+recom_prod_txt %>%
+  whisker.render(data) %>%
+  cat
+```
+
+
+

@@ -244,7 +244,11 @@ dbGetQuery(sql_con,.)
 
 #----------#
 
-
+games %>%
+  select(country_id) %>%
+  group_by(country_id) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
 ```
 
 ```{r}
@@ -277,19 +281,64 @@ SELECT *
 FROM Player_Attributes
 LIMIT 6
 ")
+
+#----------#
+
+players %>%
+  head
 ```
 
-* From where do players with higest accuracy come from?
+* Who are the players with the higest accuracy?
+
+```{r}
+"
+SELECT b.player_name, a.avg_accuracy
+FROM (
+  SELECT player_fifa_api_id AS id, ROUND(AVG(heading_accuracy),2) avg_accuracy
+  FROM Player_Attributes
+  GROUP BY player_fifa_api_id
+  ORDER BY avg_accuracy DESC
+  LIMIT 30
+) AS a LEFT JOIN
+  Player AS b ON a.id=b.player_fifa_api_id
+" %>%
+  dbGetQuery(sql_con,.)
+```
+
+* Where do they come from?
 
 * Add team name and translate to dplyr
 
 ```{r}
 dbGetQuery(sql_con, "
-SELECT stage, home_team_api_id, home_team_goal
+SELECT stage, home_team_goal, home_team_api_id
 FROM Match
 WHERE country_id = 1
 AND season = '2008/2009'
 ORDER BY stage
 ")
+
+#----------#
+
+dbGetQuery(sql_con, "
+SELECT a.*, team_long_name, team_short_name
+FROM (
+  SELECT stage, home_team_goal, home_team_api_id
+  FROM Match
+  WHERE country_id = 1
+  AND season = '2008/2009'
+  ORDER BY stage
+) AS a LEFT JOIN Team AS b
+  ON a.home_team_api_id=b.team_api_id
+")
+
+#----------#
+
+games %>%
+  filter(country_id==1) %>%
+  filter(season=='2008/2009') %>%
+  left_join(teams, by=c("home_team_api_id" = "team_api_id")) %>%
+  select(stage, home_team_goal, home_team_api_id, team_long_name, team_short_name) %>%
+  arrange(desc(stage))
 ```
 
