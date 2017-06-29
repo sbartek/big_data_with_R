@@ -302,17 +302,29 @@ dpt_prod_popularity_txt <- "
 SELECT a.product_id, product_name, COUNT(1) AS popularity
 FROM order_products__prior_tbl AS a
   LEFT JOIN products_tbl AS b ON a.product_id=b.product_id
-WHERE department_id=19
+WHERE department_id={{dptId}}
 GROUP BY a.product_id, b.product_name
 ORDER BY popularity DESC
-LIMIT 30
+LIMIT 10
 "
 
-(dpt_prod_popularity <- dbGetQuery(sc, dpt_prod_popularity_txt))
+data <- list(dptId=19)
+
+dpt_prod_popularity_txt %>%
+  whisker.render(data) %>%
+  cat
 ```
 
 ```{r}
-dpt_prod_popularity %>%
+dpt_prod_popularity_txt %>%
+  whisker.render(data) %>%
+  dbGetQuery(sc, .)
+```
+
+```{r}
+dpt_prod_popularity_txt %>%
+  whisker.render(data) %>%
+  dbGetQuery(sc, .)%>%
   ggplot(
     aes(reorder(product_name, popularity, function(x) x), 
         popularity)) +
@@ -320,12 +332,53 @@ dpt_prod_popularity %>%
   coord_flip() + 
   scale_y_continuous(label=scales::comma) +
   xlab("Product") +
-  ylab("Popularity in Department 19") +
+  ylab(paste("Popularity in Department", data$dptId)) +
   theme_minimal()
 ```
 
 * For given day, rank department popularity.
 
+```{r}
+dpt_popularity_txt <- "
+SELECT department_id, COUNT(department_id) as popularity
+FROM (
+  SELECT product_id
+  FROM order_products__train_tbl AS a INNER JOIN
+       orders_tbl AS b ON a.order_id=b.order_id
+  WHERE order_dow = {{dowId}}
+  ) AS ab INNER JOIN
+  products_tbl AS c ON ab.product_id=c.product_id
+GROUP BY department_id
+ORDER BY popularity DESC
+"
+
+data <- list(dowId=0)
+
+dpt_popularity_txt %>%
+  whisker.render(data) %>%
+  cat
+```
+
+```{r}
+dpt_popularity_txt %>%
+  whisker.render(data) %>%
+  dbGetQuery(sc, .)
+```
+
+```{r}
+dpt_popularity_txt %>%
+whisker.render(data) %>%
+  dbGetQuery(sc, .) %>%
+  ggplot(
+    aes(reorder(department_id, popularity, function(x) x), 
+        popularity)) +
+  geom_bar(stat="identity", fill='pink') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("Department") +
+  ylab(paste("Popularity on Day", data$dowId)) +
+  theme_minimal()
+```
 
 
 ## More on orders (Window Functions)
@@ -358,3 +411,127 @@ WHERE user_id <= 10
 ")
 ```
 
+*Product that is usually orders in numerous baskets*
+
+```{r}
+"
+SELECT product_id
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number DESC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+Calcula el nombre de productes que hi ha en una cistella de la compra i ho afegeix a cada producte; llavors per cada product_id calcula el nombre mig de productes que hi ha en les cistelles en què és comprat.
+
+*Could modify the query and add product name?*
+
+```{r}
+"
+SELECT b.product_name, a.*
+FROM (
+  SELECT pn.product_id
+  ,   AVG(products_number) AS avg_products_number
+  FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+  ) pn
+  GROUP BY product_id
+  ORDER BY avg_products_number DESC
+  LIMIT 100
+) a LEFT JOIN products_tbl b ON a.product_id=b.product_id
+" %>%
+dbGetQuery(sc, .)
+```
+
+*Product that is usually orders in small baskets*
+
+```{r}
+"
+SELECT product_id
+,   AVG(products_number) AS avg_products_number
+FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+) pn
+GROUP BY product_id
+ORDER BY avg_products_number ASC
+LIMIT 100
+" %>%
+dbGetQuery(sc, .)
+```
+
+- With name
+
+```{r}
+"
+SELECT b.product_name, a.*
+FROM (
+  SELECT pn.product_id
+  ,   AVG(products_number) AS avg_products_number
+  FROM (
+    SELECT order_id
+    ,   product_id
+    ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
+    FROM order_products__train_tbl
+  ) pn
+  GROUP BY product_id
+  ORDER BY avg_products_number ASC
+  LIMIT 100
+) a LEFT JOIN products_tbl b ON a.product_id=b.product_id
+" %>%
+dbGetQuery(sc, .)
+```
+
+*For the 10 first users and all their orders find the days since first order*
+
+- Days from first to last:
+
+```{r}
+dbGetQuery(sc, 
+"
+SELECT user_id, SUM(days_since_prior_order) as days_since_first_order
+FROM(
+  SELECT user_id
+  ,   order_id
+  ,   days_since_prior_order
+  ,   FIRST_VALUE(order_id)  OVER(partition by user_id ORDER BY order_number) AS first_order
+  FROM orders_tbl
+  WHERE user_id <= 10)
+GROUP BY user_id
+ORDER BY user_id
+")
+```
+
+- Cummulative sum until each order:
+
+```{r}
+dbGetQuery(sc, 
+"
+
+SELECT user_id
+,   order_id
+,   days_since_prior_order
+,   IF(days_since_first_order IS NULL, 0, days_since_first_order) as days_since_first_order
+FROM(
+SELECT user_id
+,   order_id
+,   days_since_prior_order
+,   SUM(days_since_prior_order) OVER (partition by user_id ORDER BY order_number) AS days_since_first_order
+FROM orders_tbl
+WHERE user_id <= 10 
+) a
+")
+```

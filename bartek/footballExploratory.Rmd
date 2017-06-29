@@ -12,6 +12,7 @@ readFootball()
 library(ggplot2)
 library(ggthemes)
 
+<<<<<<< HEAD
 ##print(dbListTables(con))
 ```
 
@@ -22,6 +23,11 @@ arrange ~ ORDER
 summarise ~ aggregators: sum, min, sd, etc.
 mutate ~ operators: +, *, log, etc.
 ```
+=======
+print(dbListTables(sql_con))
+```
+
+>>>>>>> upstream/master
 ## Pipes
 
 ```{r}
@@ -48,6 +54,18 @@ players %>%
   select(player_name, birthday)
 ```
 
+<<<<<<< HEAD
+=======
+```{r}
+dbGetQuery(sql_con, "
+SELECT player_name
+,   birthday
+FROM Player
+LIMIT 6
+")
+```
+
+>>>>>>> upstream/master
 ## WHERE ~ filter
 
 ```{r}
@@ -110,3 +128,63 @@ players %>%
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
+<<<<<<< HEAD
+=======
+
+Exercise
+
+* Translate from SQL to dply or from dply to SQL
+```{r}
+dbGetQuery(sql_con, "
+SELECT *
+FROM Match
+LIMIT 6
+")
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT country_id
+,   COUNT(1) AS n
+FROM Match
+GROUP BY country_id
+ORDER BY n DESC
+")
+```
+```{r}
+countries
+```
+
+
+```{r}
+games %>%
+  left_join(countries, by=c("country_id" = "id")) %>%
+  select(name, home_team_api_id) %>%
+  group_by(name) %>%
+  summarise(teams = n_distinct(home_team_api_id)) %>%
+  arrange(desc(teams))
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT *
+FROM Player_Attributes
+LIMIT 6
+")
+
+```
+
+* From where do players with higest accuracy come from?
+
+* Add team name and translate to dplyr
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT stage, home_team_api_id, home_team_goal
+FROM Match
+WHERE country_id = 1
+AND season = '2008/2009'
+ORDER BY stage
+")
+```
+>>>>>>> upstream/master

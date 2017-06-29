@@ -1,5 +1,6 @@
 ---
 title: "Football Exploratory Analysis"
+author: "Laia Esquerrà"
 output:
   html_document: default
   html_notebook: default
@@ -12,6 +13,7 @@ readFootball()
 library(ggplot2)
 library(ggthemes)
 
+# HEAD
 ##print(dbListTables(con))
 ```
 
@@ -22,6 +24,11 @@ arrange ~ ORDER
 summarise ~ aggregators: sum, min, sd, etc.
 mutate ~ operators: +, *, log, etc.
 ```
+
+```{r}
+print(dbListTables(sql_con))
+```
+
 ## Pipes
 
 ```{r}
@@ -39,12 +46,23 @@ players %>%
   sapply(class)
 ```
 
+
+
 ## SELECT ~ select
 
 ```{r}
 players %>%
   head %>%
   select(player_name, birthday)
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT player_name
+,   birthday
+FROM Player
+LIMIT 6
+")
 ```
 
 ## WHERE ~ filter
@@ -78,17 +96,31 @@ players %>%
   summarise(weight=mean(weight_kg), height=mean(height))
 ```
 
+*Versió dplyr/SQL*
+
+```{r}
+"
+SELECT AVG(weight)*0.45359237 AS weight_kg, AVG(height) AS height
+FROM Player
+" %>%
+dbGetQuery(sql_con, .)
+```
+
+No ens cal guardar-ho (assignar-ho a cap variable/taula), doncs si ho volem graficar senzillament seguim amb el **pipe**.
+
 ## GROUP BY
 
 ```{r}
 players %>%
   mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
   group_by(year) %>%
-  summarise(weight=mean(height)) %>%
-  ggplot(aes(year, weight)) +
+  summarise(height=mean(height)) %>%
+  ggplot(aes(year, height)) +
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
+
+Observem que canvia molt al llarg dels anys, això és degut a que per alguns anys tenim mostres molt petites, doncs, ho acotem.
 
 ```{r}
 players %>%
@@ -104,9 +136,160 @@ players %>%
 players %>%
   mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
   group_by(year) %>%
-  summarise(weight=mean(height), nsamples=n()) %>%
+  summarise(height=mean(height), nsamples=n()) %>%
   filter(nsamples >= 200) %>%
-  ggplot(aes(year, weight)) +
+  ggplot(aes(year, height)) +
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
+
+*Versió SQL/dplyr*
+
+```{r}
+"
+SELECT year, AVG(height) AS height
+FROM (SELECT id, SUBSTR(birthday,1,4) AS year FROM Player) AS a LEFT JOIN Player AS b ON a.id=b.id
+GROUP BY year
+ORDER BY year ASC
+" %>%
+dbGetQuery(sql_con, .) %>%
+ggplot(.,aes(year, height, group=1)) +
+geom_line(colour="darkorange") +
+theme_minimal()+
+theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+"
+SELECT year, COUNT(1) as n_sample
+FROM (SELECT id, SUBSTR(birthday,1,4) AS year FROM Player) AS a LEFT JOIN Player AS b ON a.id=b.id
+GROUP BY year
+ORDER BY year ASC
+" %>%
+dbGetQuery(sql_con, .) %>%
+ggplot(.,aes(year, n_sample, group=1)) +
+geom_line(colour="darkorange") +
+theme_minimal()+
+theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r}
+"
+SELECT a.year, height
+FROM(
+  SELECT year, AVG(height) AS height
+  FROM (SELECT id, SUBSTR(birthday,1,4) AS year FROM Player) AS a LEFT JOIN Player AS b ON a.id=b.id
+  GROUP BY year
+  ORDER BY year ASC
+) AS a INNER JOIN (
+  SELECT year, COUNT(1) as n_sample
+  FROM (SELECT id, SUBSTR(birthday,1,4) AS year FROM Player) AS a LEFT JOIN Player AS b ON a.id=b.id
+  GROUP BY year
+  HAVING n_sample >=200
+  ORDER BY year ASC
+) AS b ON a.year=b.year
+" %>%
+dbGetQuery(sql_con, .) %>%
+ggplot(.,aes(year, height, group=1)) +
+geom_line(colour="darkorange") +
+theme_minimal()+
+theme(axis.text.x = element_text(angle = 90))
+```
+
+#Exercise
+
+*Translate from SQL to dplyr or from dplyr to SQL*
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT *
+FROM Match
+LIMIT 6
+")
+
+#----------#
+
+"
+SELECT *
+FROM Match
+LIMIT 6
+" %>%
+dbGetQuery(sql_con,.)
+
+#----------#
+
+games %>%
+  head
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT country_id
+,   COUNT(1) AS n
+FROM Match
+GROUP BY country_id
+ORDER BY n DESC
+")
+
+#----------#
+
+"
+SELECT country_id
+,   COUNT(1) AS n
+FROM Match
+GROUP BY country_id
+ORDER BY n DESC
+" %>%
+dbGetQuery(sql_con,.)
+
+#----------#
+
+
+```
+
+```{r}
+countries
+```
+
+
+```{r}
+games %>%
+  left_join(countries, by=c("country_id" = "id")) %>%
+  select(name, home_team_api_id) %>%
+  group_by(name) %>%
+  summarise(teams = n_distinct(home_team_api_id)) %>%
+  arrange(desc(teams))
+
+#----------#
+
+"
+SELECT name, COUNT(DISTINCT home_team_api_id) as teams
+FROM Match AS a LEFT JOIN Country AS b ON a.country_id=b.id
+GROUP BY name
+ORDER BY teams DESC
+" %>%
+dbGetQuery(sql_con,.)
+```
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT *
+FROM Player_Attributes
+LIMIT 6
+")
+```
+
+* From where do players with higest accuracy come from?
+
+* Add team name and translate to dplyr
+
+```{r}
+dbGetQuery(sql_con, "
+SELECT stage, home_team_api_id, home_team_goal
+FROM Match
+WHERE country_id = 1
+AND season = '2008/2009'
+ORDER BY stage
+")
+```
+
