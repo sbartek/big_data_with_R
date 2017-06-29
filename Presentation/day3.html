@@ -10,7 +10,7 @@
 
 
 
-  <meta name="date" content="2017-06-27" />
+  <meta name="date" content="2017-06-29" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,7 +22,7 @@
       // Slide settings
       settings: {
                 title: 'Big Data Management',
-                        subtitle: 'with R (Day 2)',
+                        subtitle: 'with R (Day 3)',
                 useBuilds: true,
         usePrettify: true,
         enableSlideAreas: true,
@@ -95,7 +95,7 @@
       <h1 data-config-title><!-- populated from slide_config.json --></h1>
       <h2 data-config-subtitle><!-- populated from slide_config.json --></h2>
       <p data-config-presenter><!-- populated from slide_config.json --></p>
-            <p style="margin-top: 6px; margin-left: -2px;">June 27, 2017</p>
+            <p style="margin-top: 6px; margin-left: -2px;">June 29, 2017</p>
           </hgroup>
   </slide>
 
@@ -106,9 +106,10 @@
 <ul>
 <li>We were discussing what is <code>Big Data Management</code> and what is the role of <code>Data Scientist</code> in it.</li>
 <li>We were discussing what tools we can use and how they integrate with toolbox of <code>R Data Scientist</code>.</li>
-<li>We forked and cloned git respository.</li>
+<li>We forked, cloned, pushed, pulled, requested pull of git respository.</li>
 <li>We did Hive-like queries.</li>
-<li>We have even found some problems, but have not found Data Engineer to help us.</li>
+<li>We have learned dplyr.</li>
+<li>We have learned window functions.</li>
 </ul>
 
 </article></slide><slide class='segue dark nobackground level1'><hgroup class = 'auto-fadein'><h2>Plan for today</h2></hgroup><article  id="plan-for-today">
@@ -125,11 +126,16 @@
 <li>SQL/dplyr
 
 <ul>
-<li>Finishing previous exercise. (30 min)</li>
-<li>We will compare SQL and dplyr. (45 min)</li>
-<li>We will learn about window functions. (45 min)</li>
-<li>We will learn about whisker. (30 min)</li>
+<li>Window function with dplyr.</li>
 <li>We will discuss what kind of big questions we ask about Instacart Data, what actions we can propose and how we could possible design experiment in order to test them.</li>
+<li>We will go over few exercises.</li>
+</ul></li>
+<li>What is sparklyr and how it is different from sparkR.</li>
+<li>Recommendation System:
+
+<ul>
+<li>Baseline recommendation</li>
+<li>Colaborative filtering: Factorization methods</li>
 </ul></li>
 </ul>
 
@@ -164,11 +170,7 @@ git commit -m &quot;finishes day 1 activites&quot;</pre></li>
 <pre >git fetch upstream
 git checkout master
 git merge upstream/master</pre></li>
-</ul>
-
-</article></slide><slide class='segue dark nobackground level1'><hgroup class = 'auto-fadein'><h2>Finishig previous exercise</h2></hgroup><article  id="finishig-previous-exercise">
-
-</article></slide><slide class='segue dark nobackground level1'><hgroup class = 'auto-fadein'><h2>Exercise 2: SQL vs dlyr</h2></hgroup><article  id="exercise-2-sql-vs-dlyr"></article></slide>
+</ul></article></slide>
 
 
   <slide class="backdrop"></slide>

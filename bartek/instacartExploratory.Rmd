@@ -5,7 +5,6 @@ output:
   html_notebook: default
 ---
 
-
 ```{r}
 source("readDataToMemory.R")
 readInstacart()
@@ -215,6 +214,8 @@ product_times_ordered_txt %>%
   cat
 ```
 ```{r}
+data <- list(productId = 1)
+
 product_times_ordered_txt %>%
   whisker.render(data) %>%
   dbGetQuery(sc, .) %>%
@@ -225,8 +226,8 @@ product_times_ordered_txt %>%
 
 ## Questions
 
-* For given department, plot the most popular product (with templating department).
-* For given day, rank department popularity.
+* For given department, give a list of 10 the most popular product (with templating department).
+* For given day of the week, rank department popularity.
 
 ## More on orders (Window Functions)
 
@@ -254,7 +255,7 @@ WHERE user_id <= 10
 dbGetQuery(sc, 
 "SELECT user_id
 ,   order_id
-,   FIRST_VALUE(order_id)  OVER(partition by user_id ORDER BY order_number) AS first_order
+,   FIRST_VALUE(order_id)  OVER(PARTITION BY user_id ORDER BY order_number) AS first_order
 FROM orders_tbl
 WHERE user_id <= 10 
 ")
@@ -278,4 +279,18 @@ LIMIT 100
 dbGetQuery(sc, .)
 ```
 
-* Could modify the query and add prduct name?
+* Could modify the query and add product name?
+
+* Product that is usually orders in small baskets.
+
+* For 10 first users and all their orders find days since first order.
+
+```{r}
+orders %>%
+  filter(user_id <= 10) %>%
+  select(user_id, order_number, days_since_prior_order) %>%
+  arrange(user_id, order_number) %>%
+  mutate(days_since_first_order = cumsum(days_since_prior_order)) %>%
+  mutate(days_since_first_order=ifelse(is.null(days_since_prior_order), 0, days_since_first_order))
+```
+
