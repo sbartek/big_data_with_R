@@ -1,0 +1,62 @@
+---
+title: "Final Project"
+author: "Begona Dobon"
+date: "June 29, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+library(whisker)
+library(magrittr)
+
+src_tbls(sc)
+```
+
+Day of the week matters in dept popularity?, maybe send offers products/day?
+
+```{r}
+day_dept_popularity_txt <- "
+SELECT department_id,
+      COUNT(up.product_id) AS n_orders
+FROM (
+            SELECT op.order_id, product_id 
+            FROM (
+                  SELECT order_id, order_dow
+                  FROM orders_tbl
+                ) op
+            LEFT JOIN (
+                SELECT order_id, product_id
+                FROM order_products__prior_tbl
+                ) p
+            ON op.order_id = p.order_id
+            GROUP BY order_dow
+
+      ) up
+LEFT JOIN (
+        SELECT department_id, product_id
+        FROM products_tbl        
+          ) u
+ON up.product_id = u.product_id
+
+GROUP BY department_id
+ORDER BY n_orders DESC
+LIMIT 10
+"
+
+
+day_dept_popularity <-
+  dbGetQuery(sc, day_dept_popularity_txt)
+
+day_dept_popularity
+
+
+
+```
