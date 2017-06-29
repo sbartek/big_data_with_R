@@ -8,6 +8,7 @@ if (exists("spark_memory") && !is.null(spark_memory)) {
   config <- spark_config()
   config$`sparklyr.shell.driver-memory` <- spark_memory
   config$`sparklyr.shell.executor-memory` <- spark_memory
+  config$`spark.yarn.executor.memoryOverhead` <- "1G"
   sc <- spark_connect(master = "local", config = config)
 } else {
   sc <- spark_connect(master = "local")
