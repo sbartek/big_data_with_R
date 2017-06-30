@@ -1,0 +1,6 @@
+---
+title: "Final Project"
+author: "Laia Esquerrà"
+date: "June 30, 2017"
+output: html_document
+---
