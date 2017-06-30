@@ -465,6 +465,7 @@ day_dept_popularity_txt %>%
 
 ## More on orders (Window Functions)
 
+Window functions are used to add information (new column) to the data, like a moving averange, sliding window,... 
 
 ```{r}
 dbGetQuery(sc, 
@@ -542,11 +543,14 @@ orders %>%
 ```
 
 
-```{r, eval=FALSE}
-### finish this
-SELECT user_id, order_number, days_since_prior_order, 
-SUM(days_since_prior_order) OVER (partition by order_number) ORDER BY order_number ROWS BETWEEN PRECEDING AND CURRENT ROW
-FROM order_tbl
-WHERE user_id <= 10
+```{r}
+"SELECT user_id, order_number,days_since_prior_order,
+coalesce(
+SUM(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+,0)  AS days_since_first_order
+FROM orders_tbl
+where user_id <=10
+ORDER BY user_id" %>%
+dbGetQuery(sc, .)
 
 ```
