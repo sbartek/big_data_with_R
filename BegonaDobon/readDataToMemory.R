@@ -35,6 +35,7 @@ readInstacart <- function() {
 
 
 players <- NULL
+countries <- NULL
 sql_con <- NULL
 
 readFootball <- function() {

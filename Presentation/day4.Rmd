@@ -1,0 +1,67 @@
+---
+title: "Big Data Management"
+subtitle: "with R (Day 3)"
+author: "Bartek Skorulski"
+date: "June 29, 2017"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# What we have done so far
+
+##
+
+* We were discussing what is `Big Data Management` and what is the role of `Data Scientist` in it.
+* We were discussing what tools we can use and how they integrate with toolbox of `R Data Scientist`.
+* We forked, cloned, pushed, pulled, requested pull of git respository.
+* We did Hive-like queries. 
+* We have studied dplyr, window functions, whisker.
+* We have introduced Recommender Systems and MLlib.
+
+# Plan for today
+
+##
+
+* Git (10 min)
+    - We do push out git repo and request pull from upstream repo.
+    - We configure upstream repo and pull code from there.
+* SparkR: fast preview, user definied functions
+* Work on projects
+* How to install rJava on Ubunut/Mac
+
+
+# Exercise 1: push and pull...
+
+## Push and pull request
+
+* See your changes
+```
+git status
+```
+Make sure you are not going to commit big files
+* Stage and commit changes
+```
+git add -A
+git commit -m "finishes day 1 activites"
+```
+* Push
+```
+git push origin master
+```
+* Request pull
+
+## Pull from upstream
+
+* Configure upstream
+```
+git remote add upstream https://github.com/sbartek/big_data_with_R
+```
+* Fetch upstream
+```
+git fetch upstream
+git checkout master
+git merge upstream/master
+```

@@ -7,11 +7,18 @@ https://spark.apache.org/docs/latest/sparkr.html
 
 ```{r}
 source('configuration.R')
+library(ggplot2)
 ```
 
 
 ```{r}
-Sys.setenv(SPARK_HOME = "/home/bartek/.cache/spark/spark-2.1.0-bin-hadoop2.7")
+source("readDataToMemory.R")
+spark_home = sc$spark_home
+spark_disconnect(sc)
+
+Sys.setenv(
+  SPARK_HOME=spark_home
+)
 library(SparkR, lib.loc = c(file.path(Sys.getenv("SPARK_HOME"), "R", "lib")))
 sparkR.session(master = "local[*]", sparkConfig = list(spark.driver.memory = "2g"))
 ```
@@ -21,6 +28,38 @@ sparkR.session(sparkPackages = "com.databricks:spark-avro_2.11:3.0.0")
 ```
 
 ```{r}
-orders <- read.df(file.path(DATA_DIR, "orders.csv"), "csv")
+orders <- read.df(file.path(DATA_DIR, "orders.csv"), "csv", header="true")
 ```
+
+
+```{r}
+orders %>%
+  head
+```
+
+## SELECT ~ select
+```{r}
+orders %>%
+  select(orders$order_id) %>%
+  head
+```
+ 
+## WHERE ~ filter
+
+```{r}
+orders %>%
+  filter(orders$order_id == '2539329') %>%
+  collect
+```
+## GROUP BY & Aggregations
+
+```{r}
+orders %>%
+  groupBy(orders$order_dow) %>%
+  summarize(count=n(orders$order_id)) %>%
+  collect %>%
+  ggplot(aes(order_dow, count)) +
+  geom_col() 
+```
+
 
