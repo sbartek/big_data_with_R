@@ -31,6 +31,9 @@ readInstacart <- function() {
   orders <<- spark_read_csv(sc, "orders_tbl", file.path(DATA_DIR, "orders.csv"))
   
   products <<- spark_read_csv(sc, "products_tbl", file.path(DATA_DIR, "products.csv"))
+  
+  department <<- spark_read_csv(sc, "products_tbl", file.path(DATA_DIR, "departments.csv"))
+  
 }
 
 
