@@ -6,87 +6,118 @@ readInstacart()
 library(DBI)
 library(ggplot2)
 library(ggthemes)
+library(data.table)
 
-# exploration ---- 
-
-# Si l'has comprat mes de n vegades (different tickets) els ultims dos meses respecte la ultima compra 1
-# Sino, weight=promig aparicions per compra
-
-dbGetQuery(sc, 
-"
-SELECT
-  s.user_id,
-  s.product_id,
-  CASE WHEN s.num > 10 THEN 10 ELSE s.num END as num
+# exploration most bought ---- 
+products_popularity_txt <- "
+SELECT op.product_id
+,   n_orders
+,   product_name
 FROM (
-  SELECT
-    t.user_id,
-    t.product_id,
-    count(1) as num
-  FROM
-    (
-    SELECT 
-      op.order_id,
-      op.product_id,
-      o.user_id,
-      1 as num
-    FROM 
-      order_products__prior_tbl op
-        LEFT JOIN orders_tbl o ON o.order_id = op.order_id
-    GROUP BY
-      op.order_id,
-      op.product_id,
-      o.user_id
-    JOIN item_factors_tbl f ON f.id = p.product_id
-    ) t
-) s
-")
-
-user_item_rating <- order_products__prior %>%
-  select(order_id, product_id) %>%
-  left_join(orders, by="order_id") %>%
-  filter(user_id <= 50) %>% 
-  select(product_id, user_id) %>%
-  group_by(user_id, product_id) %>%
-  summarise(rating = n()) %>%
-  rename(user = user_id) %>%
-  mutate(item=product_id) %>%
-  select(user, item, rating)
-
-explicit_model <- ml_als_factorization(user_item_rating, rank = 2, iter.max = 5, regularization.parameter = 0.01)
-
-item_factors <- copy_to(sc, explicit_model$item.factors, "item_factors_tbl", overwrite = TRUE)
-
-df_embedding = dbGetQuery(sc, 
+    SELECT product_id
+    ,   COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC
+    LIMIT 30) op
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
 "
-SELECT 
-  p.product_name,
-  f.*
-FROM 
-products_tbl p
-JOIN item_factors_tbl f ON f.id = p.product_id
+df_most_bought = dbGetQuery(sc, products_popularity_txt) %>% as.data.table
+df_most_bought
+
+# exploration correlation ---- 
+
+dbGetQuery(sc, "
+CREATE TABLE contains_banana AS
+  SELECT
+    order_id,
+    max(case when (product_id = 24852 OR product_id = 13176) then 1 else 0 end) as ind_banana
+  FROM 
+    order_products__prior_tbl
+  GROUP BY
+    order_id
 ")
 
-kmeans_model <- item_factors %>%
-  ml_kmeans(centers = 30)
+dbGetQuery(sc, "
+  select 
+    ind_banana, count(1) as num
+  from 
+    contains_banana
+  group by 
+    ind_banana
+")
 
-kmeans_predicted <- sdf_predict(kmeans_model, item_factors) %>% collect()
+df_most_bought
 
-for (cluster in sort(unique(kmeans_predicted$prediction))) {
-  list_product_id_cluster = kmeans_predicted$id[kmeans_predicted$prediction==cluster]
-  message("------------------------------------------------")
-  message(paste0(head(df_embedding$product_name[df_embedding$id %in% list_product_id_cluster],20), collapse = " | "))
-}
-table(predicted$Species, predicted$prediction)
-kmeans_model$
-# print our model fit
-print(kmeans_model)
+dbGetQuery(sc, "
+SELECT
+  count(distinct order_id) as num 
+FROM
+    order_products__prior_tbl o
+")
 
-# ggplot(df_embedding) + geom_text(aes(x=V1, y=V2, label=product_name))
-ggplot(df_embedding[sample(nrow(df_embedding), 100),]) + geom_text(aes(x=V1, y=V2, label=product_name), size=3.0, check_overlap=TRUE)
+dbGetQuery(sc, "DROP TABLE IF EXISTS ratio_product")
+dbGetQuery(sc, "
+CREATE TABLE ratio_product AS
+  select 
+    product_id,
+    count(1)/3214874 as ratio_product,
+    (850839/3214874)*(count(1)/3214874) as ratio_product_banana_independent,
+    sum(c.ind_banana)/3214874 as ratio_product_banana_real,
+    (sum(c.ind_banana)/3214874)/((850839/3214874)*(count(1)/3214874)) as lift
+  from 
+    order_products__prior_tbl o
+      JOIN contains_banana c ON c.order_id = o.order_id
+  group by 
+    product_id
+")
 
-# http://www.sthda.com/english/wiki/ggplot2-texts-add-text-annotations-to-a-graph-in-r-software
-ggplot(df_embedding) + ggrepel::geom_text_repel(aes(x=V1, y=V2, label=product_name))
+dbGetQuery(sc, "
+CREATE TABLE lift_high AS
+  SELECT
+    r.*
+  FROM
+    ratio_product r
+  ORDER BY
+    r.lift desc
+  limit 1000
+")
 
-ggplot(df_embedding) + ggrepel::geom_label_repel(aes(x=V1, y=V2, label=product_name))
+dbGetQuery(sc, "
+CREATE TABLE lift_low AS
+  SELECT
+    r.*
+  FROM
+    ratio_product r
+  ORDER BY
+    r.lift asc
+  limit 1000
+")
 
+df_lift_high = dbGetQuery(sc, "
+SELECT
+  p.product_name,
+  l.*
+FROM
+  lift_high l
+  LEFT JOIN products_tbl p ON p.product_id = l.product_id
+ORDER BY
+  l.lift desc
+")
+df_lift_high
+
+df_lift_low = dbGetQuery(sc, "
+SELECT
+  p.product_name,
+  l.*
+FROM
+  lift_low l
+  LEFT JOIN products_tbl p ON p.product_id = l.product_id
+ORDER BY
+  l.lift asc
+")
+df_lift_low
