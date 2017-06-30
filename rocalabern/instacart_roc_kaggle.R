@@ -7,51 +7,69 @@ library(DBI)
 library(ggplot2)
 library(ggthemes)
 
-# exploration ---- 
-
-# Si l'has comprat mes de n vegades (different tickets) els ultims dos meses respecte la ultima compra 1
-# Sino, weight=promig aparicions per compra
-
-dbGetQuery(sc, 
-"
-SELECT
-  s.user_id,
-  s.product_id,
-  CASE WHEN s.num > 10 THEN 10 ELSE s.num END as num
+dbGetQuery(sc, "DROP TABLE IF EXISTS products_most_bought")
+dbGetQuery(sc, "
+CREATE TABLE products_most_bought AS
+SELECT 
+  op.product_id,   
+  n_orders,
+  product_name
 FROM (
-  SELECT
-    t.user_id,
-    t.product_id,
-    count(1) as num
-  FROM
-    (
     SELECT 
-      op.order_id,
-      op.product_id,
-      o.user_id,
-      1 as num
+      product_id,   
+      COUNT(1) AS n_orders
     FROM 
-      order_products__prior_tbl op
-        LEFT JOIN orders_tbl o ON o.order_id = op.order_id
-    GROUP BY
-      op.order_id,
-      op.product_id,
-      o.user_id
-    JOIN item_factors_tbl f ON f.id = p.product_id
-    ) t
-) s
+        order_products__prior_tbl
+    GROUP BY 
+        product_id
+    ORDER BY 
+        n_orders DESC
+    ) op
+  LEFT JOIN products_tbl p ON op.product_id = p.product_id
+WHERE 
+  n_orders > 100
 ")
 
-user_item_rating <- order_products__prior %>%
-  select(order_id, product_id) %>%
-  left_join(orders, by="order_id") %>%
-  filter(user_id <= 50) %>% 
-  select(product_id, user_id) %>%
-  group_by(user_id, product_id) %>%
-  summarise(rating = n()) %>%
-  rename(user = user_id) %>%
-  mutate(item=product_id) %>%
-  select(user, item, rating)
+dbGetQuery(sc, "DROP TABLE IF EXISTS rating_table")
+dbGetQuery(sc, "
+CREATE TABLE rating_table AS
+SELECT
+  t.user_id,
+  t.product_id,
+  CASE WHEN count(1) > 10 THEN 10 ELSE s.num END as rating,
+  count(1) as num,
+  count(distinct order_id) as num_orders
+FROM
+  (
+  SELECT 
+    op.order_id,
+    op.product_id,
+    o.user_id,
+    1 as num
+  FROM 
+    order_products__prior_tbl op
+      LEFT JOIN orders_tbl o ON o.order_id = op.order_id
+      JOIN products_most_bought p ON p.product_id = op.product_id
+  GROUP BY
+    op.order_id,
+    op.product_id,
+    o.user_id
+  JOIN item_factors_tbl f ON f.id = p.product_id
+  ) t
+")
+
+dbGetQuery(sc, "DROP TABLE IF EXISTS rating_table_filter")
+dbGetQuery(sc, "
+CREATE TABLE rating_table_filter AS
+SELECT
+  t.*
+FROM 
+  rating_table t
+WHERE
+
+")
+
+user_item_rating = dbGetQuery(sc, "SELECT * FROM rating_table_filter")
 
 explicit_model <- ml_als_factorization(user_item_rating, rank = 2, iter.max = 5, regularization.parameter = 0.01)
 
