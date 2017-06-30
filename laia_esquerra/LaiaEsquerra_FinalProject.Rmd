@@ -4,3 +4,14 @@ author: "Laia Esquerrà"
 date: "June 30, 2017"
 output: html_document
 ---
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
