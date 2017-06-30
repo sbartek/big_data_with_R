@@ -1,5 +1,7 @@
 **/.Rhistory
+
 **/.RData
+
 **/.Rproj.user/*
 **/.Rprofile
 
@@ -19,4 +21,3 @@ instacart_data/*
 .Rproj.user
 
 **/merastore_db/*
-
