@@ -2,11 +2,15 @@
 title: "Final Project"
 author: "Begona Dobon"
 date: "June 29, 2017"
-output: pdf_document
+output:
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 5
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo=TRUE, eval=TRUE)
 
 source("readDataToMemory.R")
 readInstacart()
@@ -18,7 +22,10 @@ library(whisker)
 library(magrittr)
 
 src_tbls(sc)
+
 ```
+
+
 
 Day of the week matters in dept popularity?, maybe send offers products/day?
 
