@@ -12,27 +12,12 @@ readFootball()
 library(ggplot2)
 library(ggthemes)
 
-<<<<<<< HEAD
-##print(dbListTables(con))
-```
-
-```
-select ~ SELECT
-filter ~ WHERE
-arrange ~ ORDER
-summarise ~ aggregators: sum, min, sd, etc.
-mutate ~ operators: +, *, log, etc.
-```
-=======
 print(dbListTables(sql_con))
 ```
 
->>>>>>> upstream/master
 ## Pipes
 
 ```{r}
-head(players)
-
 players %>%
   head
 ```
@@ -42,14 +27,12 @@ players %>%
   colnames
 ```
 ```{r}
-sapply(players, class)
-
 players %>%
   sapply(class)
-
-class %>%
-  sapply(players, .)
 ```
+
+
+
 ## SELECT ~ select
 
 ```{r}
@@ -58,8 +41,6 @@ players %>%
   select(player_name, birthday)
 ```
 
-<<<<<<< HEAD
-=======
 ```{r}
 dbGetQuery(sql_con, "
 SELECT player_name
@@ -69,45 +50,62 @@ LIMIT 6
 ")
 ```
 
->>>>>>> upstream/master
 ## WHERE ~ filter
 
 ```{r}
-players %>%
+
+WHERE1a <- players %>%
   filter(birthday >= "1998") %>%
-  head
+  head 
+
+WHERE1b <- dbGetQuery(sql_con,"SELECT * FROM Player WHERE birthday >= 1998 limit 6")
+
+all(WHERE1a==WHERE1b)
+
 ```
 
 ## ORDER ~ arrange
 
 ```{r}
-players %>%
+ORDER1a <- players %>%
   arrange(birthday) %>%
   head
+
+ORDER1b <- dbGetQuery(sql_con,"SELECT * FROM Player ORDER BY birthday limit 6")
+
+all(ORDER1a==ORDER1b)
+
+
 ```
 
 ## aggregators ~ summarise
 
 ```{r}
-players %>%
+aggregators1a <- players %>%
   summarise(weight=mean(weight), height=mean(height))
+
+aggregators1b <-"SELECT avg(weight) weight,avg(height) height FROM Player" %>%  dbGetQuery(sql_con,.)
+all(aggregators1b==aggregators1a)
+
+aggregators1a$height-aggregators1b$height
+
 ```
 
 ## mutate
 
 ```{r}
-players %>%
+mutate1a <-  players %>%
   mutate(weight_kg = weight*0.45359237) %>%
   summarise(weight=mean(weight_kg), height=mean(height))
-```
 
-```{r}
-"
-SELECT AVG(weight*0.45359237) AS weight
-,   AVG(height) AS height
-FROM Player
-" %>%
-dbGetQuery(sql_con, .)
+mutate1b <-  dbGetQuery(sql_con,"SELECT avg(weight*0.45359237) weight,avg(height) height FROM Player")
+
+all(mutate1a==mutate1b)
+
+mutate1a$weight-mutate1b$weight
+mutate1a$weight==mutate1b$weight
+mutate1a$height-mutate1b$height
+
 ```
 
 ## GROUP BY
@@ -116,38 +114,48 @@ dbGetQuery(sql_con, .)
 players %>%
   mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
   group_by(year) %>%
-  summarise(weight=mean(height)) %>%
+  summarise(weight=mean(weight)) %>%
   ggplot(aes(year, weight)) +
   geom_line(colour="darkorange") +
   theme_minimal()
-```
 
 
-```{r}
-"
-SELECT CAST(SUBSTR(birthday, 1, 4) AS INT) AS year
-,   COUNT(1) AS n
-FROM Player
-GROUP BY CAST(SUBSTR(birthday, 1, 4) AS INT) 
-" %>%
-dbGetQuery(sql_con, .) %>%
-  ggplot(aes(year, n)) +
+"SELECT CAST(substr(birthday,1,4) as int) as year, AVG(weight) as weight FROM Player GROUP BY substr(birthday,1,4) " %>% dbGetQuery(sql_con,.) %>% 
+  ggplot(aes(year, weight)) +
   geom_line(colour="darkorange") +
   theme_minimal()
+
+
+```
+```{r}
+players %>%
+  mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
+  group_by(year) %>%
+  summarise(nsample=n()) %>%
+  ggplot(aes(year, nsample)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+
+"select CAST(SUBSTR(birthday,1,4) AS INT) AS year, COUNT(1) nsample2
+FROM Player
+GROUP BY SUBSTR(birthday,1,4)" %>% dbGetQuery(sql_con,.) %>% 
+  ggplot(aes(year, nsample2)) +
+  geom_line(colour="darkorange") +
+  theme_minimal()
+
+
 ```
 
 ```{r}
 players %>%
   mutate(year=as.numeric(substring(birthday, 1, 4))) %>%
   group_by(year) %>%
-  summarise(height=mean(height), nsamples=n()) %>%
+  summarise(weight=mean(height), nsamples=n()) %>%
   filter(nsamples >= 200) %>%
   ggplot(aes(year, weight)) +
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
-<<<<<<< HEAD
-=======
 
 Exercise
 
@@ -158,6 +166,9 @@ SELECT *
 FROM Match
 LIMIT 6
 ")
+
+games %>% head()
+
 ```
 
 ```{r}
@@ -168,9 +179,14 @@ FROM Match
 GROUP BY country_id
 ORDER BY n DESC
 ")
+
+games %>% group_by(country_id) %>% summarise(n = n()) %>% arrange(-n)
+
 ```
 ```{r}
 countries
+
+"select * from Country" %>% dbGetQuery(sql_con,.)
 ```
 
 
@@ -181,6 +197,12 @@ games %>%
   group_by(name) %>%
   summarise(teams = n_distinct(home_team_api_id)) %>%
   arrange(desc(teams))
+
+"SELECT name ,COUNT(DISTINCT home_team_api_id) teams 
+FROM Country C, Match M 
+WHERE M.country_id = C.id 
+GROUP BY name 
+ORDER BY  COUNT(DISTINCT home_team_api_id) " %>% dbGetQuery(sql_con,.)
 ```
 
 ```{r}
@@ -190,9 +212,19 @@ FROM Player_Attributes
 LIMIT 6
 ")
 
+player_attribute <- tbl_df(dbGetQuery(sql_con, "SELECT * FROM Player_Attributes"))
+player_attribute %>% head()
+
 ```
 
 * From where do players with higest accuracy come from?
+```{r}
+player_attribute %>% arrange(-heading_accuracy) %>% select(country)
+dbListTables(sql_con)
+players
+
+
+```
 
 * Add team name and translate to dplyr
 
@@ -205,20 +237,3 @@ AND season = '2008/2009'
 ORDER BY stage
 ")
 ```
-<<<<<<< HEAD
->>>>>>> upstream/master
-=======
-
-
-## Countries
-
-```{r}
-countries
-```
-
-```{r}
-players %>%
-  head
-```
-
->>>>>>> upstream/master

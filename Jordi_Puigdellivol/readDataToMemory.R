@@ -4,17 +4,12 @@ library(sparklyr)
 library(RSQLite)
 library(dplyr)
 
-<<<<<<< HEAD
-
-sc <- spark_connect(master = "local")
-=======
 config <- spark_config()
-config$`sparklyr.shell.driver-memory` <- "4G"
-config$`sparklyr.shell.executor-memory` <- "4G"
-config$`spark.yarn.executor.memoryOverhead` <- "1G"
+config$`sparklyr.shell.driver-memory` <- "8G"
+config$`sparklyr.shell.executor-memory` <- "8G"
+config$`spark.yarn.executor.memoryOverhead` <- "2G"
 sc <- spark_connect(master = "local", config = config)
 #sc <- spark_connect(master = "local")
->>>>>>> upstream/master
 
 order_products__prior <- NULL
 order_products__train <- NULL
@@ -37,21 +32,6 @@ readInstacart <- function() {
 
 
 players <- NULL
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-readFootball <- function() {
-  con <- dbConnect(
-    SQLite(), 
-    dbname=file.path(DATA_DIR, "database.sqlite")
-  )
-  players <<- tbl_df(dbGetQuery(con,"SELECT * FROM Player"))
-  
-  dbDisconnect(con)
-=======
-=======
-countries <- NULL
->>>>>>> upstream/master
 sql_con <- NULL
 
 readFootball <- function() {
@@ -64,7 +44,6 @@ readFootball <- function() {
   games <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Match"))
   
   #dbDisconnect(sql_con)
->>>>>>> upstream/master
 }
 
 
