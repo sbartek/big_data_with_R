@@ -163,6 +163,44 @@ result <- dbGetQuery(sc, "SELECT order_id, count(1) as num FROM order_products__
 ggplot(result) + geom_histogram(aes(x = num))
 ```
 
+```{r}
+library(whisker)
+tags = list()
+tags["str_binning"] = 2
+str_sql_template = "
+select 
+  round(num/{{str_binning}}) as count_group
+  , count(1) as num 
+from 
+  (
+    SELECT 
+      order_id
+      , count(1) as num 
+    FROM 
+      order_products__prior_tbl 
+    group by 
+      order_id 
+  ) t
+group by 
+  round(num/{{str_binning}}) 
+order by 
+  count(1) "
+str_sql = whisker::whisker.render(str_sql_template, tags)
+result <- dbGetQuery(sc, str_sql)
+ggplot(result) + geom_col(aes(x=count_group, y=num), fill="darkorange") + theme_minimal() + xlim(x=c(0,30))
+print(result)
+```
+
+```{r}
+var_binning = 2
+result <- order_products__prior %>%
+  group_by(order_id) %>%summarise(n_products = n()) %>%
+  group_by(count_group=floor(n_products/var_binning)) %>%summarise(num = n()) %>%
+  collect()
+ggplot(result) + geom_col(aes(x=count_group, y=num), fill="darkorange") + theme_minimal() + xlim(x=c(0,30))
+print(result)
+```
+
 * What is the most popular department? 
 ```{r}
 # result <- dbGetQuery(sc, "SELECT order_hour_of_day, count(1) as num FROM orders_tbl group by order_hour_of_day order by order_hour_of_day")
@@ -331,8 +369,6 @@ Ex1 <- dbGetQuery(sc,"SELECT order_dow, count(1) number_of_orders
                   GROUP BY order_dow 
                   ORDER BY count(1) desc") #d0
 Ex1 %>% ggplot()+geom_col( aes(order_dow, number_of_orders) )
-
-
 ```
 
 
@@ -342,7 +378,6 @@ Ex2 <- dbGetQuery(sc,"SELECT order_hour_of_day, count(1) number_of_orders
                   GROUP BY order_hour_of_day 
                   ORDER BY count(1) desc") #10h
 Ex2 %>% ggplot()+geom_col( aes(order_hour_of_day, number_of_orders) )
-
 ```
 
 
@@ -354,7 +389,6 @@ Ex3 <- dbGetQuery(sc,"SELECT product_id, count(1) number_of_reorders
                   ORDER BY count(1) desc")
 Ex3 %>% head() %>% mutate(product_id=as.factor(product_id)) %>% ggplot()+geom_col( aes(product_id, number_of_reorders) )
 Ex3 %>% tail() %>% mutate(product_id=as.factor(product_id)) %>% ggplot()+geom_col( aes(product_id, number_of_reorders) )
-
 ```
 
 
@@ -362,21 +396,12 @@ Ex3 %>% tail() %>% mutate(product_id=as.factor(product_id)) %>% ggplot()+geom_co
 EX5 <- dbGetQuery(sc,"SELECT order_id, count(1) number_of_products FROM order_products__prior_tbl GROUP BY order_id")
 
 EX5 %>% ggplot()+geom_histogram(aes(number_of_products),binwidth = 1)
-
-
 ```
 
 
 ```{r}
 EX6 <- dbGetQuery(sc,"SELECT department_id, count(1) number_of_products FROM order_products__prior_tbl t1 ,products_tbl t2 where t1.product_id=t2.product_id GROUP BY department_id")
 EX6 %>% mutate(department_id=as.factor(department_id)) %>% ggplot()+geom_col(aes(department_id,number_of_products))
-
-
-
-
-
-
-
 ```
 
 
@@ -440,9 +465,6 @@ SELECT days_since_prior_order
 FROM orders_tbl
 GROUP BY days_since_prior_order
 ") 
-
-
-
 ```
 
 
@@ -466,17 +488,6 @@ WHERE user_id <= 10
 * Product that is usually orders in numerous baskets
 
 ```{r}
-
-
-
-
-
-
-
-
-
-
-
 "
 SELECT product_name
 ,   AVG(products_number) AS avg_products_number
@@ -503,11 +514,6 @@ dbGetQuery(sc, .)
 SELECT product_name
 ,   AVG(products_number) AS avg_products_number
 FROM (
-
-
-
-
-
     SELECT order_id
     ,   product_id
     ,   COUNT(product_id)  OVER(partition by order_id) AS products_number
@@ -516,10 +522,6 @@ FROM (
 ) pn,
  products_tbl p
 where pn.product_id = p.product_id
-
-
-
-
 GROUP BY product_name
 ORDER BY avg_products_number 
 LIMIT 100
@@ -548,28 +550,34 @@ where user_id <=10
 ORDER BY user_id" %>%
 dbGetQuery(sc, .)
 
-
-
 "
 SELECT user_id, order_number,days_since_prior_order,
 avg(days_since_prior_order) OVER(partition by user_id ORDER BY user_id,order_number ROWS BETWEEN 2  PRECEDING AND 1 PRECEDING ) AS days_since_first_order
 FROM orders_tbl
 where user_id <=10
-ORDER BY user_id" %>%
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-dbGetQuery(sc, .)
+ORDER BY user_id" %>% dbGetQuery(sc, .)
 
 ```
+
+```{r}
+orders %>%
+  filter(user_id <= 10) %>%
+  select(user_id, order_number, days_since_prior_order) %>%
+  arrange(user_id, order_number) %>%
+  mutate(days_since_first_order = cumsum(days_since_prior_order)) %>%
+  mutate(days_since_first_order=ifelse(is.null(days_since_prior_order), 0, days_since_first_order))
+```
+```{r}
+"select user_id
+, days_since_prior_order
+, COALESCE(SUM(days_since_prior_order) OVER 
+    (PARTITION BY user_id ORDER BY order_number ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+  ,0) AS days_since_first_order
+, order_number
+FROM orderS_tBl
+WHERE user_id <= 10
+ORDER BY user_id,
+order_number
+" %>% dbGetQuery(sc, .)
+```
+
