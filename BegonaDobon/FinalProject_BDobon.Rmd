@@ -9,7 +9,6 @@ output:
     toc_depth: 5
 ---
 
-Hard deadline is next Friday!
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=TRUE, eval=TRUE)
@@ -27,6 +26,10 @@ src_tbls(sc)
 
 ```
 
+## Is the order of the products in a basket dependent of reordering? 
+
+To answer this first we will answer some questions about the baskets. 
+
 * What is the average number of products in an order?
 
 ```{r}
@@ -42,8 +45,122 @@ number_products_order %>%
 
 ```
 
-An order has on average `{r round(mean(number_products_order$n_products))}`. 
+An order has on average `{r round(mean(number_products_order$n_products))}` products. 
 
+* What proportion of products in a basket are reordered? 
+
+```{r}
+proportion_reordered_products <-
+  dbGetQuery(sc, "SELECT order_id, 
+                  SUM(reordered) AS totalReordered,
+                  MAX(add_to_cart_order) AS sizeBasket,
+                  SUM(reordered)/ MAX(add_to_cart_order) AS PropReordered
+                  FROM order_products__prior_tbl
+                  GROUP BY order_id")
+
+proportion_reordered_products %>%
+  ggplot(aes(PropReordered)) + geom_histogram() +  scale_y_continuous(label=scales::comma)
+
+```
+
+On average, `{r mean(proportion_reordered_products$PropReordered * 100}` % of the products of a basket have been bougth previously. 
+
+
+* How is the relationship between basket size and proportion of reordered items? 
+
+```{r}
+proportion_reordered_products %>%
+  ggplot(aes(sizeBasket,PropReordered)) + geom_point()
+
+```
+
+There is no clear relationship between basket size and proportion of reordered items. 
+
+
+An order has a median size of `{r median(proportion_reordered_products$sizeBasket)}`. I will use that value to divide the products on a basket into first bougth and last bougth in an order.
+
+If the order of the products in a basket depends on a product being reordered, maybe the first products added to the order are products usually bougth by the user and the last products are due to last minute additions. 
+
+* Do reordered products tend to be added first in the baskets?
+
+```{r}
+position_reordered_products <-
+  dbGetQuery(sc, "SELECT add_to_cart_order, reordered
+                  FROM order_products__prior_tbl")
+
+position_reordered_products %>%
+  ggplot(aes(factor(reordered), add_to_cart_order)) + geom_boxplot() 
+
+```
+
+Reordered products seem to be added first in the orders.  
+
+```{r}
+t.test(position_reordered_products$add_to_cart_order~factor(position_reordered_products$reordered))
+
+```
+
+* How many of the first `{r median(proportion_reordered_products$sizeBasket)}` products in a basket are reordered? 
+
+```{r}
+
+proportion_FirstReordered <-
+  dbGetQuery(sc, "SELECT order_id, 
+                  SUM(reordered) AS totalReordered,
+                  MAX(add_to_cart_order) AS sizeBasket,
+                  SUM(reordered)/ MAX(add_to_cart_order) AS PropReordered
+                  FROM order_products__prior_tbl
+                  WHERE add_to_cart_order <= 8
+                  GROUP BY order_id")
+
+proportion_FirstReordered %>%
+  ggplot(aes(PropReordered)) + geom_histogram() +  scale_y_continuous(label=scales::comma)
+
+head(proportion_FirstReordered)
+
+```
+
+
+* How many of the last `{r median(proportion_reordered_products$sizeBasket)}` products in a basket are reordered? 
+
+```{r}
+proportion_LastReordered <-
+  dbGetQuery(sc, "SELECT order_id, 
+                  SUM(reordered) AS totalReordered,
+                  MAX(add_to_cart_order) AS sizeBasket,
+                  SUM(reordered)/ MAX(add_to_cart_order) AS PropReordered
+                  FROM order_products__prior_tbl
+                  WHERE add_to_cart_order >= 8
+                  GROUP BY order_id")
+
+proportion_LastReordered %>%
+  ggplot(aes(PropReordered)) + geom_histogram() +  scale_y_continuous(label=scales::comma)
+
+```
+
+
+* How many days happened between orders? 
+
+```{r}
+days_between_orders <-
+  dbGetQuery(sc, "SELECT user_id, 
+                AVG(days_since_prior_order) AS time_between_orders
+                FROM orders_tbl
+                GROUP BY user_id
+                ORDER BY user_id DESC")
+
+days_between_orders %>%
+  ggplot(aes(time_between_orders)) + geom_histogram() +  scale_y_continuous(label=scales::comma)
+
+```
+
+
+* Do small baskets have less time between reorders? 
+
+
+
+
+###### NOTES
 
 
 Groups of products frequently bought together?
@@ -57,100 +174,6 @@ Are the first 5 products in an order usually reordered?
 Not all baskests have 5 products,
 Get ratio of top5/whole distribution or a proportion
 average by basket size 
-
-
-```{r}
-"SELECT order_id, 
-SUM(reordered) AS Top5reordered
-FROM order_products__prior_tbl
-WHERE add_to_cart_order <= 5
-GROUP BY order_id
-ORDER BY Top5reordered DESC
-LIMIT 5
-" %>%
-dbGetQuery(sc, .)
-
-
-```
-
-* Proportion of products in a basket that are reordered? 
-
-```{r}
-proportion_reordered_products <-
-  dbGetQuery(sc, "SELECT order_id, 
-                  SUM(reordered) AS totalReordered,
-                  MAX(add_to_cart_order) AS sizeBasket,
-                  SUM(reordered)/ MAX(add_to_cart_order) AS PropReordered
-                  FROM order_products__prior_tbl
-                  GROUP BY order_id
-                  ORDER BY PropReordered DESC")
-
-proportion_reordered_products %>%
-  ggplot(aes(PropReordered)) + geom_histogram() +  scale_y_continuous(label=scales::comma)
-
-proportion_reordered_products %>%
-  ggplot(aes(sizeBasket)) + geom_histogram() +  scale_y_continuous(label=scales::comma)
-
-ggplot(proportion_reordered_products, aes(sizeBasket)) + geom_histogram(binwidth=1) + scale_x_continuous(limit=c(0,50)) + scale_y_continuous(label=scales::comma)
-
-mean(proportion_reordered_products$sizeBasket);median(proportion_reordered_products$sizeBasket)
-```
-
-Wanted to see how is the relationship between basket size and proportion of reordered items? Weird.
-
-```{r}
-proportion_reordered_products %>%
-  ggplot(aes(sizeBasket,PropReordered)) + geom_point()
-
-```
-
-
-* Proportion of first 5 products in a basket that are reordered? 
-
-```{r}
-proportion_F5reordered_products <-
-  dbGetQuery(sc, "SELECT order_id, 
-                  SUM(reordered) AS totalReordered,
-                  MAX(add_to_cart_order) AS sizeBasket,
-                  SUM(reordered)/ MAX(add_to_cart_order) AS PropReordered
-                  FROM order_products__prior_tbl
-                  WHERE add_to_cart_order <= 5
-                  GROUP BY order_id
-                  ORDER BY PropReordered DESC")
-
-proportion_F5reordered_products %>%
-  ggplot(aes(PropReordered)) + geom_histogram() +  scale_y_continuous(label=scales::comma)
-
-
-```
-
-
-* Proportion of last 5 products in a basket that are reordered? 
-
-```{r}
-proportion_L5reordered_products <-
-  dbGetQuery(sc, "SELECT order_id, 
-                  SUM(reordered) AS totalReordered,
-                  MAX(add_to_cart_order) AS sizeBasket,
-                  SUM(reordered)/ MAX(add_to_cart_order) AS PropReordered
-                  FROM order_products__prior_tbl
-                  WHERE add_to_cart_order >= 5
-                  GROUP BY order_id
-                  ORDER BY PropReordered DESC")
-
-proportion_L5reordered_products %>%
-  ggplot(aes(PropReordered)) + geom_histogram() +  scale_y_continuous(label=scales::comma)
-
-
-```
-
-
-
- 
-
-
-
-
 
 
 
