@@ -1,7 +1,7 @@
 ---
 title: "Final Project"
-author: "Begona Dobon"
-date: "July 4, 2017"
+author: "Begona Dobon Berenguer"
+date: "July 5, 2017"
 output:
   pdf_document:
     number_sections: yes
@@ -27,6 +27,9 @@ library(magrittr)
 src_tbls(sc)
 
 ```
+
+# NOTE
+As my laptop did not have enough memory to work on all the data, I created a subset of the data using only the first 100 lines for each CSV file. I do not know if the last section of the code does not work because it is wrong or because I am not working with all the data and the merging of the first 100 lines does not yeld a result. 
 
 # Is the order of the products in a basket dependent of reordering? 
 
@@ -103,9 +106,7 @@ position_reordered_products %>%
 
 ```
 
-Reordered products seem to be added first in the orders.  
-
-
+Reordered products seem to be added first in the orders. 
 
 # Time between orders
 
@@ -129,7 +130,7 @@ days_between_orders %>%
 
 On average, a user makes an order every `r ceiling(mean(days_between_orders$time_between_orders))` days.
 
-## How many days happened between orders? Taking into account only users that have used the app at least twice.  
+Taking into account only users that have used the app at least twice, to avoid one-time users. 
 
 ```{r}
 days_between_orders %>% 
@@ -139,7 +140,11 @@ days_between_orders %>%
 
 ```
 
-## Do users tend to buy more, less or the same over time? Check this one!
+
+## Do users tend to buy more, less or the same over time? 
+
+NOTE: I can not make this work 
+
 ```{r}
 size_basket_over_time_txt <-
 "
@@ -154,9 +159,9 @@ GROUP BY order_id ) p
 ON op.order_id = p.order_id
 "
 size_basket_over_time <- dbGetQuery(sc,size_basket_over_time_txt)
-head(size_basket_over_time)
 
-ggplot(size_basket_over_time, aes(x=order_number, y=n_products), group=user_id, col=user_id)+geom_line(color="grey")
+ggplot(size_basket_over_time, aes(x=order_number, y=n_products), 
+       group=user_id, col=user_id)+geom_line(color="grey")
 
 
 ```
