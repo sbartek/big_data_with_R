@@ -107,7 +107,7 @@ Reordered products seem to be added first in the orders.
 
 
 
-# Time between orders
+# Time between orders and size of the basket
 
 ## How many days happened between orders? 
 
@@ -139,6 +139,53 @@ days_between_orders %>%
 
 ```
 
+
+## Do small baskets have less time between reorders? 
+
+```{r}
+size_basket_over_time_txt <-
+"
+SELECT user_id, op.order_id, order_number,n_products
+FROM (SELECT user_id, order_id, order_number
+FROM orders_tbl) op
+LEFT JOIN (
+SELECT order_id,
+COUNT(order_id) AS n_products
+FROM order_products__prior_tbl
+GROUP BY order_id ) p
+ON op.order_id = p.order_id
+"
+size_basket_over_time <- dbGetQuery(sc,size_basket_over_time_txt)
+
+ggplot(size_basket_over_time, aes(x=order_number, y=n_products), group=user_id, col=user_id)+geom_line(color="grey")
+
+head(proportion_reordered_products)
+
+
+days_between_orders <-
+  dbGetQuery(sc, "SELECT user_id, 
+                COUNT(1) AS n_orders,
+                AVG(days_since_prior_order) AS time_between_orders
+                FROM orders_tbl
+                GROUP BY user_id
+                ORDER BY user_id DESC")
+
+days_between_orders %>%
+  ggplot(aes(time_between_orders)) + geom_histogram() +  
+    scale_y_continuous(label=scales::comma)
+
+```
+
+
+
+
+## Are the most reordered products added first to the order?
+
+
+
+
+
+
 ## Do users tend to buy more, less or the same over time? Check this one!
 ```{r}
 size_basket_over_time_txt <-
@@ -161,3 +208,48 @@ ggplot(size_basket_over_time, aes(x=order_number, y=n_products), group=user_id, 
 
 ```
 
+#####################################################
+
+## What is the most reordered product by user? 
+
+```{r}
+most_common_product_user_txt <-
+"
+SELECT user_id, op.order_id,product_id
+FROM (
+    SELECT user_id, order_id
+    FROM orders_tbl) op
+LEFT JOIN (
+    SELECT order_id, product_id
+    FROM order_products__prior_tbl
+    ) p
+ON op.order_id = p.order_id
+
+"
+most_common_product_user <- dbGetQuery(sc,most_common_product_user_txt)
+head(most_common_product_user)
+```
+
+
+
+```{r}
+
+dbGetQuery(sc, "SELECT * FROM order_products__prior_tbl LIMIT 10")
+
+dbGetQuery(sc, "SELECT * FROM orders_tbl LIMIT 100")
+
+
+products_popularity_txt <- "SELECT product_id
+,   COUNT(1) AS n_orders
+FROM order_products__prior_tbl
+GROUP BY product_id
+ORDER BY n_orders DESC
+LIMIT 50
+"
+
+products_popularity <-
+  dbGetQuery(sc, products_popularity_txt)
+
+products_popularity
+
+```
