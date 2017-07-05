@@ -1,6 +1,6 @@
 ---
 title: "Big Data Management"
-subtitle: "with R (Day 3)"
+subtitle: "with R (Day 4)"
 author: "Bartek Skorulski"
 date: "June 29, 2017"
 output: ioslides_presentation
@@ -28,10 +28,9 @@ knitr::opts_chunk$set(echo = FALSE)
 * Git (10 min)
     - We do push out git repo and request pull from upstream repo.
     - We configure upstream repo and pull code from there.
-* SparkR: fast preview, user definied functions
 * Work on projects
 * How to install rJava on Ubunut/Mac
-
+* SparkR: fast preview
 
 # Exercise 1: push and pull...
 
