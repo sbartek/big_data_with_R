@@ -37,21 +37,21 @@ readInstacart <- function() {
 }
 
 
-# players <- NULL
-# countries <- NULL
-# sql_con <- NULL
-# 
-# readFootball <- function() {
-#   sql_con <<- dbConnect(
-#     SQLite(), 
-#     dbname=file.path(DATA_DIR, "database.sqlite")
-#   )
-#   players <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Player"))
-#   countries <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Country"))
-#   games <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Match"))
-#   
-#   #dbDisconnect(sql_con)
-# }
+players <- NULL
+countries <- NULL
+sql_con <- NULL
+ 
+readFootball <- function() {
+  sql_con <<- dbConnect(
+    SQLite(), 
+    dbname=file.path(DATA_DIR, "database.sqlite")
+  )
+  players <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Player"))
+  countries <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Country"))
+  games <<- tbl_df(dbGetQuery(sql_con,"SELECT * FROM Match"))
+   
+  #dbDisconnect(sql_con)
+}
 
 
 
