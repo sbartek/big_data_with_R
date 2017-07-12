@@ -1,0 +1,85 @@
+---
+title: "Final_project_Jamie_Arjona_Martinez_Big_data_Management_R"
+output: html_document
+---
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+library(whisker)
+library(magrittr)
+
+src_tbls(sc)
+```
+
+1) Products more ordered by day of the week and it's quantity
+```{r}
+d <-"select a.*, p.product_name
+from(
+  select o.order_dow, opp.product_id, count(opp.product_id) quantity
+  from order_products__prior_tbl  opp
+  left join
+    (select order_dow, order_id
+    from orders_tbl
+    ) o
+  on opp.order_id=o.order_id
+  group by order_dow, opp.product_id) a 
+join 
+  (select max(quantity) as max_quantity from 
+    (select o.order_dow, opp.product_id, count(opp.product_id) quantity
+      from order_products__prior_tbl  opp
+      left join
+        (select order_dow, order_id
+        from orders_tbl
+        ) o
+      on opp.order_id=o.order_id
+      group by order_dow, opp.product_id) a
+  group by order_dow) b
+on a.quantity = b.max_quantity
+join
+  (select product_name, product_id
+  from products_tbl) p
+  on a.product_id = p.product_id
+order by order_dow" %>%
+  dbGetQuery(sc,.)
+
+d %>%
+  ggplot(
+    aes(reorder(order_dow, quantity, function(x) x), 
+        quantity, fill=product_name)) +
+  geom_bar(stat="identity") +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("order_dow") +
+  ylab("quantity") +
+  theme_minimal()
+
+
+
+```
+
+2) 5 users with max number of products in a order
+```{r}
+
+d <- "select user_id, a.order_id, number_products from orders_tbl b
+join
+(select order_id, count(product_id) number_products from order_products__prior_tbl
+  group by order_id) a
+on b.order_id = a.order_id
+order by number_products desc
+limit 10" %>%
+  dbGetQuery(sc,.)
+
+d %>%
+  ggplot(
+    aes(reorder(user_id, number_products), 
+        number_products, fill=user_id)) +
+  geom_bar(stat="identity") + 
+  xlab("User") +
+  ylab("Number of products") +
+  theme_minimal()
+```

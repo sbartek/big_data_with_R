@@ -24,6 +24,10 @@ sparkR.session(master = "local[*]", sparkConfig = list(spark.driver.memory = "2g
 ```
 
 ```{r}
+spark_home
+```
+
+```{r}
 sparkR.session(sparkPackages = "com.databricks:spark-avro_2.11:3.0.0")
 ```
 

@@ -1,0 +1,162 @@
+---
+title: "Final Project"
+author: "Marta Herrera"
+date: "June 30, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Analysis of instacart
+
+Read the data:
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+
+1. Which are the most populars products (top 10)?
+
+```{r}
+dbGetQuery(sc, "
+SELECT t1.product_id, product_name, COUNT(*) AS n_orders
+FROM order_products__prior_tbl t1 LEFT JOIN products_tbl t2 ON t1.product_id=t2.product_id
+GROUP BY t1.product_id, product_name
+ORDER BY n_orders DESC
+LIMIT 10 ") %>%
+  ggplot(aes(reorder(product_name, n_orders, function(x) x), n_orders)) +
+  geom_bar(stat="identity", fill='darkblue') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("Products") +
+  ylab("Number of orders")
+```
+
+
+2. How may products are never bought again?
+
+```{r}
+dbGetQuery(sc, "
+SELECT count(*) as n_prod
+FROM(
+  SELECT product_id, sum(reordered) as n_reord
+  FROM order_products__prior_tbl
+  GROUP BY product_id)
+WHERE n_reord=0")
+```
+
+There are 4372 products that are never bought again.
+
+
+3. For each of the 5 customers that come the higher number of times, which is the probability to come again each hour of the day?
+
+There are a lot of users with 100 orders, I'll take the first 5.
+
+```{r}
+dbGetQuery(sc, "
+SELECT user_id, order_hour_of_day, n_ord/sum(n_ord) OVER(partition by user_id) as prob
+FROM (
+SELECT user_id, order_hour_of_day, count(*) AS n_ord
+FROM orders_tbl
+WHERE user_id in (
+  SELECT user_id
+  FROM orders_tbl
+  GROUP BY user_id
+  ORDER BY count(*) desc
+  LIMIT 5)
+GROUP BY user_id, order_hour_of_day
+ORDER BY user_id, order_hour_of_day
+)")
+```
+
+
+
+# Recommender system
+
+```{r}
+order_products__prior %>%
+  select(order_id, product_id) %>%
+  left_join(orders, by="order_id") %>%
+  filter(user_id <= 10) %>% 
+  select(product_id, user_id) %>%
+  group_by(user_id, product_id) %>%
+  summarise(rating = n()) %>%
+  rename(user = user_id) %>%
+  mutate(item=product_id) %>%
+  select(user, item, rating) ->
+  user_item_rating
+```
+
+```{r}
+explicit_model <- ml_als_factorization( user_item_rating, iter.max = 5, regularization.parameter = 0.01)
+```
+
+```{r}
+#matriu amb files=productes
+V <- as.matrix(explicit_model$item.factors)[,-1]
+
+#matriu amb files=individus
+U <- as.matrix(explicit_model$user.factors)[,-1]
+
+#multipliquem matrius
+A <- U %*% t(V)
+```
+
+
+For the 10 first users, which product would we recommend them?
+
+```{r}
+index <- apply(A, 1, which.max)
+V2 <- as.data.frame(explicit_model$item.factors)
+
+recommended_prod <- c()
+for (i in index){
+  recommended_prod <- c(recommended_prod, V2$id[i])
+}
+
+df <- data.frame(users=1:10, recommended_prod)
+
+df %>%
+  left_join(products, by=c("recommended_prod" = "product_id"), copy=T) %>%
+  select(users, recommended_prod, product_name)
+
+```
+
+
+For the user 1, which 5 products that he has never bought would we recommend him?
+
+```{r}
+#Products that he has bought
+bought <- orders %>%
+  filter(user_id==1) %>%
+  inner_join(order_products__prior, by="order_id") %>%
+  distinct(product_id) %>% 
+  collect()
+
+#remove this products from the matrix
+bought <- as.vector(bought$product_id)
+cols_to_remove <- c()
+for (i in bought){
+  cols_to_remove <- c(cols_to_remove, which(V2$id==i))
+}
+df_user1 <- data.frame(id_prod= V2$id[-cols_to_remove],  A=A[1,-cols_to_remove])
+
+#Product with maximum rating
+max <- df_user1[which.max(df_user1$A),] #id=32792
+
+top5 <- df_user1 %>%
+  arrange(desc(A)) %>%
+  top_n(5)
+
+products %>%
+  filter(product_id %in% top5$id_prod)
+```
+

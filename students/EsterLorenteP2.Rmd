@@ -1,0 +1,88 @@
+---
+title: "Instacart Exploratory Analysis"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document: default
+---
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+```{r}
+order_products__prior %>%
+  select(order_id, product_id) %>%
+  left_join(orders, by="order_id") %>%
+  filter(user_id <= 10) %>% 
+  select(product_id, user_id) %>%
+  group_by(user_id, product_id) %>%
+  summarise(rating = n()) %>%
+  rename(user = user_id) %>%
+  mutate(item=product_id) %>%
+  select(user, item, rating) ->
+  user_item_rating
+
+user_item_rating
+```
+
+
+```{r}
+explicit_model <- ml_als_factorization( user_item_rating, iter.max = 5, regularization.parameter = 0.01)
+
+explicit_model
+```
+
+```{r}
+# rows: products
+v <- as.matrix(explicit_model$item.factors)
+vf <- v[,-1]
+vid <- v[,1]
+
+# rows: users
+u <- as.matrix(explicit_model$user.factors)
+uf <- u[,-1]
+uid <- u[,1]
+
+# rows: users
+# columns: products
+af <- uf %*% t(vf)
+```
+
+
+```{r}
+user <- 1
+ratings <- af[user,]
+best <- which(ratings > 3)
+vid[best]
+```
+
+
+
+
+```{r}
+implicit_predictions <- explicit_model$.model %>%
+  invoke("transform", spark_dataframe(user_item_rating)) %>%
+  collect()
+```
+
+
+
+
+
+```{r}
+order_products__prior %>%
+  colnames %>%
+  print
+
+orders %>%
+  colnames %>%
+  print
+```
