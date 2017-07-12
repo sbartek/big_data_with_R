@@ -1,0 +1,128 @@
+---
+title: "Evaluation"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+1) The most populars products
+```{r}
+Mostpopul <- order_products__prior %>% 
+             group_by(product_id) %>% 
+             summarize(count = n()) %>% 
+             top_n(5, wt = count) %>%
+             left_join(select(products, product_id, product_name), by="product_id") %>%
+             arrange(desc(count)) %>% 
+             collect()
+Mostpopul
+Mostpopul %>% ggplot(
+    aes(reorder(product_name, count, function(x) x), 
+        count)) +
+  geom_bar(stat="identity", fill='green') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("product") +
+  ylab("Number of orders") +
+  theme_minimal()
+```
+
+
+2) The most repeted products 
+
+```{r}
+Reor <-order_products__prior %>% 
+       group_by(product_id) %>% 
+       summarize(propor_reord = mean(reordered), n=n()) %>% 
+       top_n(20, wt = propor_reord) %>% 
+       arrange(desc(propor_reord)) %>% 
+       left_join(select(products, product_id, product_name), by="product_id") %>%
+       collect()
+Reor
+Reor %>% 
+  ggplot(aes(x=reorder(product_name,-propor_reord), y=propor_reord))+
+  geom_bar(stat="identity",fill="blue")+
+  theme(axis.text.x=element_text(angle=90, hjust=1),axis.title.x = element_blank())+coord_cartesian(ylim=c(0.85,0.95))
+```
+
+
+3)Product bough in first place
+```{r}
+Fir <- order_products__prior %>%
+       group_by(product_id) %>%
+       mutate(add_cart_order = if_else(add_to_cart_order == 1, 1, 0)) %>%
+       summarize(first = sum(add_cart_order), n=n()) %>%
+       top_n(10, wt = first) %>%
+       arrange(desc(first)) %>%
+       left_join(select(products, product_id, product_name), by="product_id") %>%
+       collect()
+Fir
+```
+
+
+
+Recommender
+
+```{r}
+order_products__prior %>%
+  select(order_id, product_id) %>%
+  left_join(orders, by="order_id") %>%
+  filter(user_id <= 10) %>% 
+  select(product_id, user_id) %>%
+  group_by(user_id, product_id) %>%
+  summarise(rating = n()) %>%
+  rename(user = user_id) %>%
+  mutate(item=product_id) %>%
+  select(user, item, rating) ->
+  user_item_rating
+```
+
+
+
+```{r}
+explicit_model <- ml_als_factorization( user_item_rating, iter.max = 5, regularization.parameter = 0.01)
+```
+
+
+
+
+```{r}
+v <- as.matrix(explicit_model$item.factors)[, -1]
+
+u <- as.matrix(explicit_model$user.factors)[, -1]
+
+a <- u %*% t(v) 
+
+```
+
+
+Most recomended product for each person (first 20)
+
+```{r}
+Max <- apply(a, 1, which.max)
+dat <- as.data.frame(explicit_model$item.factors)
+
+Product_recom <- c()
+for (i in Max){
+  Product_recom <- c(Product_recom, dat$id[i])
+}
+
+df <- data.frame(users=1:20, Product_recom)
+
+df %>%
+  left_join(products, by=c("Product_recom" = "product_id"), copy=T) %>%
+  select(users, Product_recom, product_name)
+```
+
+
+bartekskorulski@gmail.com

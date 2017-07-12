@@ -1,0 +1,298 @@
+---
+title: "Instacart Final Project"
+author: "Sandra Orozco"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document: default
+---
+
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+# Exploratory Analysis
+
+1. The most popular product
+
+It can be seen that the most popular product is the banana followed by the bag of organic bananas.
+
+```{r}
+products_popularity_txt <- "
+SELECT op.product_id
+,   n_orders
+,   product_name
+FROM (
+    SELECT product_id
+    ,   COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC
+    LIMIT 30) op
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+"
+
+products_popularity <-
+  dbGetQuery(sc, products_popularity_txt)
+
+products_popularity
+```
+
+```{r}
+
+products_popularity %>%
+  ggplot(
+    aes(reorder(product_name, n_orders, function(x) x), 
+        n_orders)) +
+  geom_bar(stat="identity", fill='steelblue') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("Product") +
+  ylab("Number of orders") +
+  theme_minimal()
+```
+
+2. Which product is never bought again
+
+It can be seen that all the products have been rebought at least one time.
+
+```{r}
+least_reord_txt <- "
+SELECT product_id
+,   COUNT(reordered) AS reord
+FROM order_products__prior_tbl
+GROUP BY product_id
+ORDER BY reord
+"
+
+least_reord <-
+  dbGetQuery(sc, least_reord_txt)
+
+least_reord
+```
+
+3. The most repeated first time bought product
+
+The most repeated first time bought product is the product that is bought but the higher number of different users. It can be seen that the order of products is very similar to the one found for most popular products.
+
+```{r}
+first_time_txt <- "
+SELECT op.product_id
+,   n_orders
+,   product_name
+FROM (
+    SELECT product_id
+    ,   COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    WHERE reordered=0
+    GROUP BY product_id
+    ORDER BY n_orders DESC
+    LIMIT 30) op
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+"
+
+first_time <-
+  dbGetQuery(sc, first_time_txt)
+
+first_time
+```
+
+```{r}
+
+first_time %>%
+  ggplot(
+    aes(reorder(product_name, n_orders, function(x) x), 
+        n_orders)) +
+  geom_bar(stat="identity", fill='steelblue') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("Product") +
+  ylab("Number of first orders") +
+  theme_minimal()
+```
+
+4. The most usual customers
+
+The most usual customers are those that have many orders. So we want to see how many distinct orders each customer has. This could be used to send promotions to those users that buy with more frequency.
+
+```{r}
+user_orders_txt <- "
+SELECT user_id, COUNT(1) norders
+FROM orders_tbl
+GROUP BY user_id
+LIMIT 30
+"
+
+user_orders <- dbGetQuery(sc, user_orders_txt)
+user_orders
+```
+
+```{r}
+
+user_orders %>%
+  ggplot(
+    aes(reorder(user_id, norders, function(x) x), 
+        norders)) +
+  geom_bar(stat="identity", fill='steelblue') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("User") +
+  ylab("Number of orders") +
+  theme_minimal()
+```
+
+Another option would be to send promotions to those users which buy the bigger baskets.
+
+```{r}
+n_txt <- "
+SELECT user_id, a.order_id,
+COUNT(1) AS nprod
+FROM order_products__prior_tbl AS a
+LEFT JOIN (
+  SELECT user_id, order_id
+  FROM orders_tbl
+) AS b
+ON a.order_id = b.order_id
+GROUP BY a.order_id, user_id
+ORDER BY nprod DESC
+LIMIT 30
+"
+
+n <-
+  dbGetQuery(sc, n_txt)
+
+n
+```
+
+```{r}
+
+n %>%
+  ggplot(
+    aes(reorder(order_id, nprod, function(x) x), 
+        nprod)) +
+  geom_bar(stat="identity", fill='steelblue') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("Order") +
+  ylab("Number of products in biggest order") +
+  theme_minimal()
+```
+
+5. For each user, what is the mean periodicity between different orders and what is the user's antiquity.
+
+```{r}
+orders %>%
+  filter(user_id <= 10) %>%
+  select(user_id, order_number, days_since_prior_order) %>%
+  arrange(user_id, order_number) %>%
+  mutate(days_since_prior_order=ifelse(is.null(days_since_prior_order), 0, days_since_prior_order))%>%
+  mutate(days_since_first_order = cumsum(days_since_prior_order)) %>%
+  mutate(days_since_first_order=ifelse(is.null(days_since_prior_order), 0, days_since_first_order))%>%
+  group_by(user_id)%>%
+  summarise(days_since_prior_order=mean(days_since_prior_order),days_since_first_order=mean(days_since_first_order))
+```
+
+6. Periodicity of each product
+7. Common baskets (products bought together)
+8. Dependence of order of buying with reordering it
+
+# Recommendation
+
+Possible recommendation strategies:
+
+1. Recommend new product
+2. Suggest product that is very likely to be bought at the moment the person uses the app
+3. Offer packages of product
+4. When to buy in order to have shopping faster
+5. Recommend not to buy a product
+
+We start by usign ALS factorization to recommend a product to a user. Only the first 10 users are considered in order to reduce computation time.
+
+```{r}
+order_products__prior %>%
+  select(order_id, product_id) %>%
+  left_join(orders, by="order_id") %>%
+  filter(user_id <= 10) %>% 
+  select(product_id, user_id) %>%
+  group_by(user_id, product_id) %>%
+  summarise(rating = n()) %>%
+  rename(user = user_id) %>%
+  mutate(item=product_id) %>%
+  select(user, item, rating) ->
+  user_item_rating
+```
+
+```{r}
+explicit_model <- ml_als_factorization( user_item_rating, iter.max = 5, regularization.parameter = 0.01)
+```
+
+The first rows of the factorised matrix are:
+
+```{r}
+V <- explicit_model$item.factors[,-1]
+U <- explicit_model$user.factors[,-1]
+
+recommend <- as.matrix(U)%*%t(as.matrix(V))
+recommend[1:10,1:10]
+```
+
+The recommendations for each of the 10 users are products:
+
+```{r}
+library(xtable)
+max_rate <- apply(recommend,1,which.max)
+prod_name <- explicit_model$item.factors[,1][max_rate]
+
+recommendation <- matrix(data=c(paste0("User ",1:10),paste0("Product ",prod_name)),ncol=2)
+print(xtable(recommendation))
+```
+
+Now we want to recommend the most likely product that has never been bought before by the user.
+
+```{r}
+table <- collect(user_item_rating)
+table <- as.data.frame(table)
+for(user in 1:nrow(recommend)){
+  t_user <- table[table$user==user,]
+  for(product in 1:ncol(recommend)){
+    if(explicit_model$item.factors[,1][product] %in% t_user$item){
+      recommend[user,product]<-0
+    }
+  }
+}
+```
+
+Now we get our new recommendations:
+
+```{r}
+library(xtable)
+max_rate <- apply(recommend,1,which.max)
+prod_name <- explicit_model$item.factors[,1][max_rate]
+
+recommendation <- matrix(data=c(paste0("User ",1:10),paste0("Product ",prod_name)),ncol=2)
+print(xtable(recommendation))
+```
+
+# Further comments
+
+How to evaluate the recommendation:
+
+1. Count how many times people buy the recommended product
+2. Count rebuying
+3. If in the long term people spent more

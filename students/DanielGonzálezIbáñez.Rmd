@@ -1,0 +1,133 @@
+---
+title: "Instacart Exploratory Analysis"
+author: "Daniel González"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document: default
+---
+
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+
+```{r}
+
+# Check which is the most frequent buying periodicity
+
+query1 <- dbGetQuery(sc, 
+"
+SELECT days_since_prior_order
+,   COUNT(1) AS N
+FROM orders_tbl
+GROUP BY days_since_prior_order
+ORDER BY N DESC
+") 
+
+barplot(query1$N,names.arg=query1$days_since_prior_order, xlab="Days since prior order")
+
+# That's interesting, looks like many people buys either every week (same day of the week) or every month (same day of the month).
+
+
+```
+
+```{r}
+
+# Check the preferred day of the week for those who buy weekly
+
+query2<- dbGetQuery(sc, 
+"
+SELECT order_dow, COUNT(1) AS N
+FROM orders_tbl
+WHERE days_since_prior_order=7
+GROUP BY order_dow
+ORDER BY N DESC
+") 
+query2
+barplot(query2$N, names.arg=query2$order_dow)
+
+```
+
+```{r}
+# Now we compare with the data for ALL customers
+
+query2bis<- dbGetQuery(sc, 
+"
+SELECT order_dow, COUNT(1) AS N
+FROM orders_tbl
+GROUP BY order_dow
+ORDER BY N DESC
+") 
+
+query2bis
+barplot(query2bis$N, names.arg=query2bis$order_dow)
+
+
+
+# Both plots are similar so we found nothing interesting here
+
+```
+
+```{r}
+
+# Which is the most popular hour of day for every day of the week?
+
+query3 <- dbGetQuery(sc, 
+"
+SELECT order_hour_of_day
+, order_dow
+, N
+, MAX(N) OVER(PARTITION BY order_dow) AS max_N
+, FIRST( order_hour_of_day) OVER(PARTITION BY order_dow ORDER BY N DESC) AS max_hour 
+, RANK() OVER(PARTITION BY order_dow ORDER BY N DESC) AS rank 
+FROM (
+    SELECT order_hour_of_day, order_dow, COUNT(1) AS N
+    FROM orders_tbl
+    GROUP BY order_hour_of_day, order_dow
+    ORDER BY N DESC)
+HAVING rank=1
+")
+
+query3
+cbind(query3$order_dow,query3$order_hour_of_day)
+
+
+# Here we can see that for all days except 6 and 0 the most popular buying hour is 10. For the two mentioned before, the most popular hour is 14
+
+
+
+
+```
+```{r}
+
+#Plot the histogram of the frequency of the number of products in a basket
+
+query4<- dbGetQuery(sc, 
+"
+SELECT order_id, count(order_id) AS Number_of_Products
+  FROM order_products__train_tbl 
+ GROUP by order_id
+ORDER BY Number_of_Products
+") 
+
+
+query4
+
+hist(query4$Number_of_Products, breaks=20, freq=T, main ="Number of products in a basket")
+
+## As we can see, baskets with 1 to 5 products and baskets with 6 to 10 products are the most frequent ones. Then, it starts a decreasing pattern
+
+
+
+```
+
+## bartekskorulski@gmail.com

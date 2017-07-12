@@ -1,0 +1,204 @@
+---
+title: "Nye_final_project"
+author: "Jessica Nye"
+date: "June 29, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+Which aisles are visited the most? Aisle 24
+
+```{r}
+aisle_popularity_txt <- "
+SELECT aisle_id,SUM(n_orders) AS total_orders
+FROM(
+  SELECT op.product_id,aisle_id,n_orders
+  FROM (
+    SELECT product_id,COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC)op
+  LEFT JOIN (
+      SELECT product_id,aisle_id
+      FROM products_tbl) p
+  ON op.product_id = p.product_id
+)
+GROUP BY aisle_id
+ORDER BY total_orders DESC
+"
+
+
+aisle_popularity <-
+  dbGetQuery(sc, aisle_popularity_txt)
+
+aisle_popularity
+```
+
+Which aisles are visited the least? Aisle 113
+
+
+```{r}
+aisle_popularity_txt <- "
+SELECT aisle_id,SUM(n_orders) AS total_orders
+FROM(
+  SELECT op.product_id,aisle_id,n_orders
+  FROM (
+    SELECT product_id,COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC)op
+  LEFT JOIN (
+      SELECT product_id,aisle_id
+      FROM products_tbl) p
+  ON op.product_id = p.product_id
+)
+GROUP BY aisle_id
+ORDER BY total_orders ASC
+"
+
+
+aisle_popularity <-
+  dbGetQuery(sc, aisle_popularity_txt)
+
+aisle_popularity
+
+```
+
+
+Which products are in these aisles? Which are most/least popular?
+Aisle 113 is the frozen foods. The most popular item is orange juice and the least is tropical fruit smoothie.
+Aisle 24 is produce. The most popular item is banana and the least popular is eve apple.
+
+
+```{r}
+least_aisle_products_txt <- "
+SELECT op.product_id,n_orders,product_name,aisle_id
+FROM (
+    SELECT product_id,COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC
+    ) op
+LEFT JOIN (
+    SELECT product_id,product_name,aisle_id
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+WHERE aisle_id=113
+"
+
+least_aisle_products <-
+  dbGetQuery(sc, least_aisle_products_txt)
+
+least_aisle_products
+```
+```{r}
+most_aisle_products_txt <- "
+SELECT op.product_id,n_orders,product_name,aisle_id
+FROM (
+    SELECT product_id,COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC
+    ) op
+LEFT JOIN (
+    SELECT product_id,product_name,aisle_id
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+WHERE aisle_id=24
+"
+
+most_aisle_products <-
+  dbGetQuery(sc, most_aisle_products_txt)
+
+most_aisle_products
+
+```
+
+
+I recommend they reorder the stores, so the most popular aisle 24 is next to the second most 83, and so on. That way the people who are picking the items off the shelf will be more efficiant.
+
+
+
+
+
+
+
+
+Which products are most ordered and most likly to be bought again? Bananas
+```{r}
+
+
+how_many_reordered_products_txt <- 
+"SELECT product_name,total_orders,n_reorders,n_reorders/total_orders AS percent_reorder
+FROM (
+    SELECT product_id,COUNT(product_id) AS total_orders,SUM(reordered) AS n_reorders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ) op
+LEFT JOIN (
+    SELECT product_id,product_name,aisle_id
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+ORDER BY total_orders DESC, percent_reorder DESC
+"
+
+
+how_many_reordered_products <-
+  dbGetQuery(sc, how_many_reordered_products_txt)
+
+how_many_reordered_products
+
+```
+
+Does the popularity of the item predect if it will be reordered? Yes, or 10,000 total orders, the item has around a 75% chance of being reorderd. However below 10,000 total orders, you can not predict if the item will be reordered.
+
+```{r}
+how_many_reordered_products %>%
+  ggplot(aes(total_orders, percent_reorder)) + 
+  geom_line() +
+  theme_minimal()
+
+
+```
+
+Which products are never be bought again? There are 4,372 items that have never been bought again. I recommend these items to be removed from the catelog.
+
+
+```{r}
+hated_products_txt <- 
+"SELECT product_name,total_orders,n_reorders,n_reorders/total_orders AS percent_reorder
+FROM (
+    SELECT product_id,COUNT(product_id) AS total_orders,SUM(reordered) AS n_reorders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+) op
+LEFT JOIN (
+    SELECT product_id,product_name,aisle_id
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+WHERE n_reorders/total_orders = 0
+"
+
+
+hated_products <-
+  dbGetQuery(sc, hated_products_txt)
+
+hated_products
+
+```
+
+
+
+

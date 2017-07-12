@@ -1,0 +1,444 @@
+---
+title: "Big Data Managements With R Project"
+author: "Iñigo Portillo"
+date: "June 29, 2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+We are going to do an exploratory analysis of our Instacard data base. For that we are going to answer the following questions:
+* What it the most popular buying hour?
+* What is the most popular department?
+* Is there any significative differences between the most popular products and the most popular products on the first buy?
+* What is the most popular department depending on the day of the week?
+* Calculate the probability of an object to be reordered.
+
+```{r}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+Primero, observamos las bases de datos.
+
+```{r}
+dbGetQuery(sc, 
+"SELECT * 
+FROM order_products__prior_tbl 
+LIMIT 10")
+
+dbGetQuery(sc, 
+"SELECT * 
+FROM products_tbl 
+LIMIT 10")
+
+dbGetQuery(sc, 
+"SELECT * 
+FROM orders_tbl 
+LIMIT 10")
+```
+
+Vamos a resolver la primera pregunta, para eso haremos un histograma de las compras realizadas cada hora, y como podemos observar, la hora más popular para hacer las compras es las 10 am.
+```{r}
+dbGetQuery(sc, 
+"
+SELECT order_hour_of_day
+,   COUNT(1) AS n_orders
+FROM orders_tbl
+GROUP BY order_hour_of_day
+ORDER BY n_orders DESC
+")%>%
+  ggplot(aes(order_hour_of_day,n_orders))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+
+Para responder la segunda pregunta, vamos a hacer también un gráfico histograma, poniendo el nombre del departamento en el eje x y el numero de veces que se ha comprado en el departamento en el eje y. Podemos ver como el departamento "personal care" es el más usado.
+```{r}
+dbGetQuery(sc,
+"
+SELECT department
+, COUNT(1) AS n_dep
+FROM(
+SELECT f.product_id
+, n_orders
+, department
+
+FROM(
+SELECT op.product_id
+,   n_orders
+,   department_id
+FROM (
+    SELECT product_id
+    ,   COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC) op
+LEFT JOIN (
+    SELECT product_id
+    ,   department_id
+    FROM products_tbl) p
+ON op.product_id = p.product_id) f
+LEFT JOIN (
+    SELECT department_id
+    ,   department
+    FROM departments_tbl) g
+ON f.department_id = g.department_id)
+GROUP BY department
+ORDER BY n_dep DESC
+")%>%
+  ggplot(aes(reorder(department ,n_dep, function(x) x),n_dep))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+
+Para responder a la tercera pregunta vamos a calcular el número de cada producto comprado en total y el número de cada producto comprado durante cada primera compra. Se ve como no hay diferencias significativas, los tres primeros productos son los mismos, y los siguientes tienen poca variación entre ellos.
+
+```{r}
+"
+SELECT op.product_id
+,   n
+,   product_name
+FROM(
+SELECT product_id
+,   COUNT(1) AS n
+FROM (
+    SELECT user_id
+    ,   order_id AS first_order
+    FROM orders_tbl 
+    WHERE order_number = 1) pn
+LEFT JOIN(
+    SELECT product_id
+    ,   order_id
+    FROM order_products__prior_tbl ) p
+ON p.order_id = first_order
+GROUP BY product_id
+ORDER BY n DESC) op
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) f
+ON op.product_id = f.product_id
+" %>%
+  dbGetQuery(sc, .)
+```
+```{r}
+
+products_popularity_txt <- "
+SELECT op.product_id
+,   n_orders
+,   product_name
+FROM (
+    SELECT product_id
+    ,   COUNT(1) AS n_orders
+    FROM order_products__prior_tbl
+    GROUP BY product_id
+    ORDER BY n_orders DESC
+    LIMIT 30) op
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) p
+ON op.product_id = p.product_id
+"
+
+products_popularity <-
+  dbGetQuery(sc, products_popularity_txt)
+
+products_popularity
+```
+
+Para el cálculo de el departamento más popular dependiendo el día de la semana vamos a dibujar los siguientes 7 gráficos. Como se puede observar no hay grandes variaciones.
+
+```{r}
+
+
+dbGetQuery(sc,"
+SELECT department_id
+, COUNT(1) AS n_dep
+FROM(
+SELECT f.order_id
+, f.product_id
+, f.department_id
+, order_dow
+FROM(
+SELECT op.order_id
+, op.product_id
+, department_id
+FROM(
+SELECT order_id
+, product_id
+FROM order_products__train_tbl) op
+LEFT JOIN (
+    SELECT product_id
+    ,   department_id
+    FROM products_tbl) d
+ON d.product_id=op.product_id) f
+LEFT JOIN (
+    SELECT order_id
+    ,   order_dow
+    FROM orders_tbl) g
+ON g.order_id=f.order_id) h
+WHERE order_dow = 0
+GROUP BY department_id
+ORDER BY n_dep DESC
+")%>%
+  ggplot(aes(reorder(department_id, n_dep, function(x) x),n_dep))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+```{r}
+
+
+dbGetQuery(sc,"
+SELECT department_id
+, COUNT(1) AS n_dep
+FROM(
+SELECT f.order_id
+, f.product_id
+, f.department_id
+, order_dow
+FROM(
+SELECT op.order_id
+, op.product_id
+, department_id
+FROM(
+SELECT order_id
+, product_id
+FROM order_products__train_tbl) op
+LEFT JOIN (
+    SELECT product_id
+    ,   department_id
+    FROM products_tbl) d
+ON d.product_id=op.product_id) f
+LEFT JOIN (
+    SELECT order_id
+    ,   order_dow
+    FROM orders_tbl) g
+ON g.order_id=f.order_id) h
+WHERE order_dow = 1
+GROUP BY department_id
+ORDER BY n_dep DESC
+")%>%
+  ggplot(aes(reorder(department_id, n_dep, function(x) x),n_dep))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+```{r}
+
+
+dbGetQuery(sc,"
+SELECT department_id
+, COUNT(1) AS n_dep
+FROM(
+SELECT f.order_id
+, f.product_id
+, f.department_id
+, order_dow
+FROM(
+SELECT op.order_id
+, op.product_id
+, department_id
+FROM(
+SELECT order_id
+, product_id
+FROM order_products__train_tbl) op
+LEFT JOIN (
+    SELECT product_id
+    ,   department_id
+    FROM products_tbl) d
+ON d.product_id=op.product_id) f
+LEFT JOIN (
+    SELECT order_id
+    ,   order_dow
+    FROM orders_tbl) g
+ON g.order_id=f.order_id) h
+WHERE order_dow = 2
+GROUP BY department_id
+ORDER BY n_dep DESC
+")%>%
+  ggplot(aes(reorder(department_id, n_dep, function(x) x),n_dep))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+```{r}
+
+
+dbGetQuery(sc,"
+SELECT department_id
+, COUNT(1) AS n_dep
+FROM(
+SELECT f.order_id
+, f.product_id
+, f.department_id
+, order_dow
+FROM(
+SELECT op.order_id
+, op.product_id
+, department_id
+FROM(
+SELECT order_id
+, product_id
+FROM order_products__train_tbl) op
+LEFT JOIN (
+    SELECT product_id
+    ,   department_id
+    FROM products_tbl) d
+ON d.product_id=op.product_id) f
+LEFT JOIN (
+    SELECT order_id
+    ,   order_dow
+    FROM orders_tbl) g
+ON g.order_id=f.order_id) h
+WHERE order_dow = 3
+GROUP BY department_id
+ORDER BY n_dep DESC
+")%>%
+  ggplot(aes(reorder(department_id, n_dep, function(x) x),n_dep))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+```{r}
+
+
+dbGetQuery(sc,"
+SELECT department_id
+, COUNT(1) AS n_dep
+FROM(
+SELECT f.order_id
+, f.product_id
+, f.department_id
+, order_dow
+FROM(
+SELECT op.order_id
+, op.product_id
+, department_id
+FROM(
+SELECT order_id
+, product_id
+FROM order_products__train_tbl) op
+LEFT JOIN (
+    SELECT product_id
+    ,   department_id
+    FROM products_tbl) d
+ON d.product_id=op.product_id) f
+LEFT JOIN (
+    SELECT order_id
+    ,   order_dow
+    FROM orders_tbl) g
+ON g.order_id=f.order_id) h
+WHERE order_dow = 4
+GROUP BY department_id
+ORDER BY n_dep DESC
+")%>%
+  ggplot(aes(reorder(department_id, n_dep, function(x) x),n_dep))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+```{r}
+
+
+dbGetQuery(sc,"
+SELECT department_id
+, COUNT(1) AS n_dep
+FROM(
+SELECT f.order_id
+, f.product_id
+, f.department_id
+, order_dow
+FROM(
+SELECT op.order_id
+, op.product_id
+, department_id
+FROM(
+SELECT order_id
+, product_id
+FROM order_products__train_tbl) op
+LEFT JOIN (
+    SELECT product_id
+    ,   department_id
+    FROM products_tbl) d
+ON d.product_id=op.product_id) f
+LEFT JOIN (
+    SELECT order_id
+    ,   order_dow
+    FROM orders_tbl) g
+ON g.order_id=f.order_id) h
+WHERE order_dow = 5
+GROUP BY department_id
+ORDER BY n_dep DESC
+")%>%
+  ggplot(aes(reorder(department_id, n_dep, function(x) x),n_dep))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+```{r}
+
+
+dbGetQuery(sc,"
+SELECT department_id
+, COUNT(1) AS n_dep
+FROM(
+SELECT f.order_id
+, f.product_id
+, f.department_id
+, order_dow
+FROM(
+SELECT op.order_id
+, op.product_id
+, department_id
+FROM(
+SELECT order_id
+, product_id
+FROM order_products__train_tbl) op
+LEFT JOIN (
+    SELECT product_id
+    ,   department_id
+    FROM products_tbl) d
+ON d.product_id=op.product_id) f
+LEFT JOIN (
+    SELECT order_id
+    ,   order_dow
+    FROM orders_tbl) g
+ON g.order_id=f.order_id) h
+WHERE order_dow = 6
+GROUP BY department_id
+ORDER BY n_dep DESC
+")%>%
+  ggplot(aes(reorder(department_id, n_dep, function(x) x),n_dep))+
+  geom_col(fill="darkgreen")+
+  theme_minimal()
+```
+
+
+
+To answer the last question we are going to calculate the proportion of the reorders of every object, as we can see the product Raw Veggie Wrappers has a 0.94 proportion in reorders.
+```{r}
+reordered_prop_txt <- "
+SELECT product_name
+, n_reorders
+, prop
+FROM(
+SELECT product_id
+,   COUNT(case reordered when '1' then 1 else null end) AS n_reorders 
+, COUNT(case reordered when '1' then 1 else null end)/COUNT(product_id) AS prop
+FROM order_products__prior_tbl
+GROUP BY product_id
+ORDER BY prop DESC) p
+LEFT JOIN (
+    SELECT product_id
+    ,   product_name
+    FROM products_tbl) g
+ON g.product_id=p.product_id
+"
+
+reordered_prop <-
+  dbGetQuery(sc, reordered_prop_txt)
+
+reordered_prop
+```

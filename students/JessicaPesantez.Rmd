@@ -1,0 +1,155 @@
+---
+title: "JESSICA PESANTEZ- Big Data Management with R"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r echo=FALSE, comment=NA}
+source("readDataToMemory.R")
+readInstacart()
+
+library(DBI)
+library(ggplot2)
+library(ggthemes)
+
+src_tbls(sc)
+```
+
+
+
+### EXERCISE 1
+
+*Parejas de productos que más se compran juntos en una orden de compra. 
+```{r}
+agrup_prod_order<-  "
+  
+SELECT p.product_id as Product_id1, op.product_id as Product_id2,
+COUNT(*) as Purchase_Orders 
+FROM order_products__train_tbl op
+INNER JOIN order_products__train_tbl p
+ON op.order_id = p.order_id AND op.product_id > p.product_id
+WHERE op.order_id >0
+GROUP BY p.product_id, op.product_id
+ORDER BY COUNT (*) DESC
+"
+agrup_prod_order <-
+  dbGetQuery(sc, agrup_prod_order)
+agrup_prod_order
+```
+
+### EXERCISE 2
+
+* Which are the 20 most popular aisles at 12H00? And plot them. 
+
+```{r}
+aisle_popularity <- "
+SELECT aisle_id, COUNT(aisle_id) AS popularidad
+FROM (
+  SELECT product_id
+  FROM order_products__prior_tbl AS a INNER JOIN
+      orders_tbl AS b ON a.order_id=b.order_id
+  WHERE order_hour_of_day=12) AS ab INNER JOIN
+  products_tbl AS c
+  ON ab.product_id = c.product_id
+  GROUP BY aisle_id
+  ORDER BY popularidad DESC
+LIMIT 20
+"
+
+aisle_popularity <-
+  dbGetQuery(sc, aisle_popularity)
+aisle_popularity
+```
+
+```{r}
+aisle_popularity %>%
+  ggplot(
+    aes(reorder(aisle_id, popularidad, function(x) x), 
+        popularidad)) +
+  geom_bar(stat="identity", fill='red') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("Clasifación de las islas") +
+  ylab("Popularidad a las 12H00") +
+  theme_minimal()
+```
+
+
+### EXERCISE 3
+
+* For a given day of the week (Wednesday), find the most popular hours of purchasing 
+
+```{r}
+hours_popularity<-dbGetQuery(sc,"SELECT order_hour_of_day , COUNT(1) AS n_Times
+    FROM orders_tbl
+    WHERE order_dow =3
+    GROUP BY order_hour_of_day
+    ORDER BY n_Times DESC
+   ")
+hours_popularity
+```
+
+```{r}
+hours_popularity %>%
+  ggplot(
+    aes(reorder(order_hour_of_day, n_Times, function(x) x), 
+        n_Times)) +
+  geom_point(stat="identity", fill='darkred', color="darkgreen") +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("Order hour of Tuesday") +
+  ylab("Frequency of Purchases") +
+  theme_minimal()
+```
+
+### EXERCISE 4
+
+* TOTAL SUM OF ORDERS THAT WERE REORDERED 
+
+```{r}
+"
+SELECT 
+COUNT(DISTINCT product_id) AS n_productos
+FROM order_products__train_tbl
+WHERE reordered =1
+" %>%
+dbGetQuery(sc, .)
+```
+
+
+#### EXERCISE 5
+
+* Conteo del número de usuarios con respecto a los días de la semana (en este caso solo el fin de semana)
+
+```{r}
+wk_us_all<-dbGetQuery(sc,"SELECT order_dow
+    ,   user_id
+    ,   COUNT(user_id) OVER(partition by order_dow) AS num_users
+    FROM orders_tbl
+WHERE order_dow>=5
+    ORDER BY num_users DESC
+LIMIT 100
+    ")
+wk_us_all
+```
+
+
+```{r}
+wk_us_all %>%
+  ggplot(
+    aes(reorder(num_users,order_dow, function(x) x), 
+        order_dow)) +
+  geom_bar(stat="identity", fill='darkorange') +
+  coord_flip() + 
+  scale_y_continuous(label=scales::comma) +
+  xlab("Days of the week") +
+  ylab("Number of users") +
+  theme_minimal()
+```
+
+
+
+
+
