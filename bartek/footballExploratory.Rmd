@@ -12,7 +12,6 @@ readFootball()
 library(ggplot2)
 library(ggthemes)
 
-<<<<<<< HEAD
 ##print(dbListTables(con))
 ```
 
@@ -27,7 +26,6 @@ mutate ~ operators: +, *, log, etc.
 print(dbListTables(sql_con))
 ```
 
->>>>>>> upstream/master
 ## Pipes
 
 ```{r}
@@ -58,7 +56,6 @@ players %>%
   select(player_name, birthday)
 ```
 
-<<<<<<< HEAD
 =======
 ```{r}
 dbGetQuery(sql_con, "
@@ -69,7 +66,6 @@ LIMIT 6
 ")
 ```
 
->>>>>>> upstream/master
 ## WHERE ~ filter
 
 ```{r}
@@ -146,7 +142,7 @@ players %>%
   geom_line(colour="darkorange") +
   theme_minimal()
 ```
-<<<<<<< HEAD
+
 =======
 
 Exercise
@@ -205,8 +201,7 @@ AND season = '2008/2009'
 ORDER BY stage
 ")
 ```
-<<<<<<< HEAD
->>>>>>> upstream/master
+
 =======
 
 
@@ -221,4 +216,3 @@ players %>%
   head
 ```
 
->>>>>>> upstream/master
